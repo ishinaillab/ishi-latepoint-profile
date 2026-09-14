@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ishi LatePoint Profile
  * Description: Independent customer profile shortcode using the child theme's existing form design.
- * Version: 1.1.1
+ * Version: 1.1.2
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: ishi-latepoint-profile
@@ -14,7 +14,7 @@ final class Ishi_LatePoint_Profile {
     private static $render_count = 0;
     const ACTION = 'ishi_lp_save_profile';
     const SHORTCODE = 'ishi_latepoint_profile';
-    const TEMPLATE = '/woocommerce-custom-myaccount/ishi-form-edit-account.php';
+    const TEMPLATE = '/templates/ishi-form-edit-account.php';
     const FIELD_MAP = [
         'account_first_name' => 'first_name',
         'account_last_name'  => 'last_name',
@@ -130,7 +130,7 @@ final class Ishi_LatePoint_Profile {
             if ( is_wp_error( $context ) ) {
                 return self::notice_html( [ 'success' => false, 'messages' => $context->get_error_messages() ] );
             }
-            $template = get_stylesheet_directory() . self::TEMPLATE;
+            $template = __DIR__ . self::TEMPLATE;
             if ( ! is_readable( $template ) ) {
                 return self::notice_html( [ 'success' => false, 'messages' => [ __( 'The profile form is unavailable. Please contact support.', 'ishi-latepoint-profile' ) ] ] );
             }

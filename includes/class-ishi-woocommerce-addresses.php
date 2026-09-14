@@ -111,12 +111,6 @@ final class Ishi_WooCommerce_Addresses {
     }
 
     private static function template( $name ) {
-        $child = get_stylesheet_directory() . '/woocommerce-custom-myaccount/' . $name;
-        if ( is_readable( $child ) ) {
-            $headers = get_file_data( $child, [ 'version' => 'Ishi Address Template' ] );
-            if ( $headers['version'] === '2' ) { return $child; }
-        }
-        // An old My Account-dependent child template must not silently reintroduce its endpoint handler.
         return dirname( __DIR__ ) . '/templates/' . $name;
     }
 
