@@ -34,7 +34,7 @@ Presentation retains the supplied description/title filters, `woocommerce_my_acc
 
 ## Standalone implementation
 
-`Ishi_WooCommerce_Addresses::render()` explicitly prepares all template variables. `handle_request()` runs on template_redirect with unique POST action `ishi_save_customer_address`; `save_submission()` separates validation/persistence from presentation. Query parameter `ishi_address` selects only billing/shipping. No account endpoint, account URL, `$wp` endpoint state, native nonce/action or automatic WC account handler is used.
+`Ishi_WooCommerce_Addresses::render()` explicitly prepares all template variables. `handle_request()` runs on wp_loaded at priority 5 with unique POST action `ishi_save_customer_address`; `save_submission()` separates validation/persistence from presentation. Query parameter `ishi_address` selects only billing/shipping. No account endpoint, account URL, `$wp` endpoint state, native nonce/action or automatic WC account handler is used.
 
 The nonce action is `ishi_save_customer_address_{billing|shipping}`, field `ishi_address_nonce`. Identity is always server-derived. Only native/filter-defined fields in the selected namespace can become setters or metadata. The adapter blocks validation callbacks from changing customer identity or unrelated core properties. It does not sandbox trusted PHP hooks.
 

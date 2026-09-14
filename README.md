@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.1.0
+# Ishi LatePoint Profile 1.1.1
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -6,7 +6,7 @@ The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_custom
 
 Replace the existing plugin with the complete updated plugin folder, including `includes/` and `templates/`. Add `[ishi_customer_addresses]` to a page. It initially shows both address cards. Edit opens the chosen address on that same page; a confirmed save redirects back to the cards. Validation failures keep the editor and submitted values.
 
-The bundled templates preserve the supplied WooCommerce structure/classes. To keep presentation in the child theme, copy both files from `templates/` into `qwery-child/woocommerce-custom-myaccount/`, replacing the old address templates. Keep their `Ishi Address Template: 1` header. Old templates without this header are deliberately skipped because they submit to the native endpoint handler. Theme CSS still controls appearance; page-specific CSS selectors may need adjustment outside My Account.
+The bundled templates preserve the supplied WooCommerce structure/classes. To keep presentation in the child theme, copy both files from `templates/` into `qwery-child/woocommerce-custom-myaccount/`, replacing the old address templates. Keep their `Ishi Address Template: 2` header. Old templates without this header are deliberately skipped because they submit to the native endpoint handler. Theme CSS still controls appearance; page-specific CSS selectors may need adjustment outside My Account.
 
 Exclude the address page from full-page/CDN caching. The module sends no-cache headers and sets DONOTCACHEPAGE, but upstream caches must respect authenticated requests. Render through the normal WordPress frontend lifecycle (including footer scripts), not a separately fetched fragment. Only one address interface per page is supported because WooCommerce locale scripts use fixed field IDs.
 
@@ -19,6 +19,14 @@ Fields come from WooCommerce country/locale definitions and filters. Registered 
 Persistence is reread before success and after the native post-save hook. WooCommerce and extension writes are not an atomic transaction: a later failure can leave changes stored, and the error explains this. Trusted extensions can have their own side effects. Hooks that require `is_account_page()`, endpoint query variables, the native POST action, or checkout-only context need their own standalone integration.
 
 ## Verification
+
+### 1.1.1 routing correction
+
+Removed the unrequested Cancel link. Submissions now run at `wp_loaded` priority 5, before native WC form processing and frontend `template_redirect` handlers. A scoped `wp_redirect` guard interrupts redirects attempted by save callbacks; it is removed before this module's own confirmed-success redirect. If a callback tries to redirect after writing data, the form reports an unconfirmed save and stays in edit mode rather than claiming success. Direct PHP headers/exit in third-party code cannot be intercepted by this WordPress filter.
+
+Both templates now require `Ishi Address Template: 2`. Replace previously copied child-theme templates with the new files; until then, the plugin uses its bundled corrected templates. Do not simply change an old template's header. The original supplied templates contain endpoint links and the native edit-address POST action; they are unsuitable for the standalone shortcode.
+
+The v1.1.0 module itself did not specify a My Account redirect. The exact live-site callback behind the reported redirect was not reproduced locally; this release fixes the late processing weakness and blocks WordPress redirects during save callbacks. If a redirect persists, inspect the live rendered form/POST and active snippets rather than assuming WooCommerce core processed this module's unique action.
 
 Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live installation. The live version remains unconfirmed. See `docs/woocommerce-address-audit.md`. GitHub Actions lints PHP and runs `php tests/address-adapter-test.php`; those tests use API doubles and do not replace a real WordPress/WooCommerce browser test.
 

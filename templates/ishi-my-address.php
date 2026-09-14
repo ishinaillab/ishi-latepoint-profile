@@ -1,7 +1,7 @@
 <?php
 /**
  * Standalone address display. WooCommerce owns the data and formatting.
- * Ishi Address Template: 1
+ * Ishi Address Template: 2
  */
 defined( 'ABSPATH' ) || exit;
 if ( empty( $ishi_address_template ) || ! isset( $get_addresses, $customer_id, $base_url ) ) { return; }

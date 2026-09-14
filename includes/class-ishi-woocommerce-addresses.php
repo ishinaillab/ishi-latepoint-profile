@@ -11,7 +11,8 @@ final class Ishi_WooCommerce_Addresses {
 
     public static function boot() {
         add_shortcode( self::SHORTCODE, [ __CLASS__, 'render' ] );
-        add_action( 'template_redirect', [ __CLASS__, 'handle_request' ], 15 );
+        // Process before WooCommerce form handlers and frontend routing redirects.
+        add_action( 'wp_loaded', [ __CLASS__, 'handle_request' ], 5 );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_if_present' ], 30 );
     }
 
@@ -113,7 +114,7 @@ final class Ishi_WooCommerce_Addresses {
         $child = get_stylesheet_directory() . '/woocommerce-custom-myaccount/' . $name;
         if ( is_readable( $child ) ) {
             $headers = get_file_data( $child, [ 'version' => 'Ishi Address Template' ] );
-            if ( $headers['version'] === '1' ) { return $child; }
+            if ( $headers['version'] === '2' ) { return $child; }
         }
         // An old My Account-dependent child template must not silently reintroduce its endpoint handler.
         return dirname( __DIR__ ) . '/templates/' . $name;
@@ -210,6 +211,11 @@ final class Ishi_WooCommerce_Addresses {
         $values = [];
         $started = false;
         $previous_notices = null;
+        $redirect_guard = static function ( $location ) {
+            // Stop redirecting callbacks before their following exit can abandon this handler.
+            throw new RuntimeException( 'An address-save extension attempted to redirect the request.' );
+        };
+        add_filter( 'wp_redirect', $redirect_guard, PHP_INT_MAX );
         try {
             if ( ! empty( $_FILES ) ) { return self::failure( $type, [ __( 'This address form does not accept file uploads.', 'ishi-latepoint-profile' ) ] ); }
             $customer = self::customer();
@@ -323,6 +329,7 @@ final class Ishi_WooCommerce_Addresses {
                 ? __( 'The save could not be fully confirmed. Some changes may already be stored. Review the address before trying again.', 'ishi-latepoint-profile' )
                 : __( 'The address could not be saved. Please check the fields or contact support.', 'ishi-latepoint-profile' ) ], $values );
         } finally {
+            remove_filter( 'wp_redirect', $redirect_guard, PHP_INT_MAX );
             if ( $previous_notices !== null ) { wc_set_notices( $previous_notices ); }
         }
     }

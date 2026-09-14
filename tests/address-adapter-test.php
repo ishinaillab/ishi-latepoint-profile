@@ -11,7 +11,9 @@ function esc_url( $s ) { return esc_html( $s ); }
 function wp_kses_post( $s ) { return strip_tags( (string) $s, '<strong><br><em>' ); }
 function wp_strip_all_tags( $s ) { return strip_tags( $s ); }
 function add_shortcode( ...$a ) {}
-function add_action( ...$a ) {}
+function add_action( ...$a ) { $GLOBALS['registrations'][] = $a; }
+function add_filter( $tag, $callback, $priority = 10 ) { $GLOBALS['filters'][ $tag ] = $callback; }
+function remove_filter( $tag, $callback, $priority = 10 ) { unset( $GLOBALS['filters'][ $tag ] ); }
 function did_action( $s ) { return 1; }
 function is_user_logged_in() { return $GLOBALS['uid'] > 0; }
 function get_current_user_id() { return $GLOBALS['uid']; }
@@ -62,7 +64,7 @@ function set_transient( $k, $v, $ttl ) { $GLOBALS['transients'][ $k ] = $v; retu
 function get_transient( $k ) { return $GLOBALS['transients'][ $k ] ?? false; }
 function delete_transient( $k ) { unset( $GLOBALS['transients'][ $k ] ); }
 class RedirectSignal extends Exception { public $url, $status; public function __construct( $url, $status ) { $this->url = $url; $this->status = $status; } }
-function wp_safe_redirect( $url, $status ) { throw new RedirectSignal( $url, $status ); }
+function wp_safe_redirect( $url, $status = 302 ) { $url = apply_filters( 'wp_redirect', $url, $status ); throw new RedirectSignal( $url, $status ); }
 
 class WC_Data_Exception extends Exception {}
 class WC_Validation {
@@ -201,5 +203,21 @@ test( 'successful POST redirects to the standalone display', function () {
     $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['REQUEST_URI'] = '/address-book/?ishi_address=billing';
     try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No redirect.' ); }
     catch ( RedirectSignal $r ) { expect( $r->status === 303 && strpos( $r->url, '/address-book/' ) !== false && strpos( $r->url, 'ishi_address=billing' ) === false && strpos( $r->url, 'my-account' ) === false, 'Wrong success destination.' ); }
+} );
+test( 'save handler runs before native form handlers and frontend routing', function () {
+    $found = false;
+    foreach ( $GLOBALS['registrations'] as $registration ) {
+        if ( $registration[0] === 'wp_loaded' && $registration[1] === [ 'Ishi_WooCommerce_Addresses', 'handle_request' ] && $registration[2] < 10 ) { $found = true; }
+    }
+    expect( $found, 'Address handler registered too late.' );
+} );
+test( 'editor has no Cancel link or native account action', function () {
+    $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render();
+    expect( strpos( $html, 'Cancel' ) === false && strpos( $html, 'value="edit_address"' ) === false && strpos( $html, 'woocommerce-edit-address-nonce' ) === false, 'Native layout/action returned.' );
+} );
+test( 'redirecting post-save extension cannot send customer to My Account', function () {
+    $GLOBALS['actions']['woocommerce_customer_save_address'] = function () { wp_safe_redirect( 'https://example.test/my-account/' ); };
+    $r = submit( request_data() );
+    expect( ! $r['success'] && $r['type'] === 'billing' && ! isset( $GLOBALS['filters']['wp_redirect'] ), 'Redirect escaped or guard leaked.' );
 } );
 echo "All address adapter tests passed.\n";

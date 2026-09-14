@@ -1,7 +1,7 @@
 <?php
 /**
  * Standalone address editor. Variables are prepared by the shortcode controller.
- * Ishi Address Template: 1
+ * Ishi Address Template: 2
  */
 defined( 'ABSPATH' ) || exit;
 if ( empty( $ishi_address_template ) || ! isset( $load_address, $address, $base_url, $revision ) || ! Ishi_WooCommerce_Addresses::valid_type( $load_address ) ) { return; }
@@ -18,7 +18,6 @@ do_action( 'woocommerce_before_edit_account_address_form' );
         <?php do_action( "woocommerce_after_edit_address_form_{$load_address}" ); ?>
         <p>
             <button type="submit" class="button<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" name="ishi_save_address" value="<?php echo esc_attr( $load_address ); ?>"><?php esc_html_e( 'Save changes', 'ishi-latepoint-profile' ); ?></button>
-            <a href="<?php echo esc_url( $base_url ); ?>" class="ishi-address-cancel"><?php esc_html_e( 'Cancel', 'ishi-latepoint-profile' ); ?></a>
             <?php wp_nonce_field( Ishi_WooCommerce_Addresses::ACTION . '_' . $load_address, 'ishi_address_nonce', false ); ?>
             <input type="hidden" name="action" value="<?php echo esc_attr( Ishi_WooCommerce_Addresses::ACTION ); ?>" />
             <input type="hidden" name="ishi_address_type" value="<?php echo esc_attr( $load_address ); ?>" />
