@@ -64,7 +64,14 @@ function set_transient( $k, $v, $ttl ) { $GLOBALS['transients'][ $k ] = $v; retu
 function get_transient( $k ) { return $GLOBALS['transients'][ $k ] ?? false; }
 function delete_transient( $k ) { unset( $GLOBALS['transients'][ $k ] ); }
 class RedirectSignal extends Exception { public $url, $status; public function __construct( $url, $status ) { $this->url = $url; $this->status = $status; } }
-function wp_safe_redirect( $url, $status = 302 ) { $url = apply_filters( 'wp_redirect', $url, $status ); throw new RedirectSignal( $url, $status ); }
+function wp_safe_redirect( $url, $status = 302 ) {
+    $url = apply_filters( 'wp_redirect', $url, $status );
+    $GLOBALS['redirects'][] = [ 'url' => $url, 'status' => $status ];
+    // Only the top-level handler test interrupts execution to avoid its explicit exit.
+    // Save callbacks use WordPress-like return behavior, not a catchable fake failure.
+    if ( ! empty( $GLOBALS['interrupt_redirect'] ) ) { throw new RedirectSignal( $url, $status ); }
+    return true;
+}
 
 class WC_Data_Exception extends Exception {}
 class WC_Validation {
@@ -151,6 +158,7 @@ function reset_state() {
 }
 function fixture() {
     reset_state();
+    $GLOBALS['redirects'] = []; $GLOBALS['interrupt_redirect'] = false;
     $GLOBALS['uid'] = 5; $GLOBALS['writes'] = 0; $GLOBALS['fail_save'] = false; $GLOBALS['silent_failure'] = false;
     foreach ( [ 'filters', 'actions', 'events', 'notices', 'scripts', 'transients' ] as $k ) { $GLOBALS[ $k ] = []; }
     $address = [ 'first_name' => 'Existing', 'country' => 'PH', 'state' => '00', 'postcode' => '1200', 'city' => 'Makati', 'email' => 'billing@example.test', 'phone' => '+639171234567' ];
@@ -200,6 +208,7 @@ test( 'extension post-save error retains editor', function () { $GLOBALS['action
 test( 'validation hook cannot change customer identity', function () { $GLOBALS['actions']['woocommerce_after_save_address_validation'] = function ( $id, $type, $fields, $customer ) { $customer->set_id( 9 ); }; rejected( submit( request_data() ) ); } );
 test( 'country change reselects native field definitions', function () { $GLOBALS['filters']['woocommerce_billing_fields'] = function ( $f, $c ) { if ( $c === 'US' ) { $f['billing_city']['required'] = false; } return $f; }; $r = submit( request_data( 'billing', [ 'billing_country' => 'US', 'billing_state' => 'CA', 'billing_postcode' => '90210', 'billing_city' => '' ] ) ); expect( $r['success'], 'Country-specific fields ignored.' ); } );
 test( 'successful POST redirects to the standalone display', function () {
+    $GLOBALS['interrupt_redirect'] = true;
     $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['REQUEST_URI'] = '/address-book/?ishi_address=billing';
     try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No redirect.' ); }
     catch ( RedirectSignal $r ) { expect( $r->status === 303 && strpos( $r->url, '/address-book/' ) !== false && strpos( $r->url, 'ishi_address=billing' ) === false && strpos( $r->url, 'my-account' ) === false, 'Wrong success destination.' ); }
@@ -215,9 +224,11 @@ test( 'editor has no Cancel link or native account action', function () {
     $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render();
     expect( strpos( $html, 'Cancel' ) === false && strpos( $html, 'value="edit_address"' ) === false && strpos( $html, 'woocommerce-edit-address-nonce' ) === false, 'Native layout/action returned.' );
 } );
-test( 'redirecting post-save extension cannot send customer to My Account', function () {
+test( 'save callbacks are not intercepted by a redirect guard', function () {
     $GLOBALS['actions']['woocommerce_customer_save_address'] = function () { wp_safe_redirect( 'https://example.test/my-account/' ); };
     $r = submit( request_data() );
-    expect( ! $r['success'] && $r['type'] === 'billing' && ! isset( $GLOBALS['filters']['wp_redirect'] ), 'Redirect escaped or guard leaked.' );
+    expect( $r['success'] && $GLOBALS['redirects'] === [ [ 'url' => 'https://example.test/my-account/', 'status' => 302 ] ], 'Callback redirect was intercepted.' );
+    // This callback deliberately returns. A real callback that exits would end the request;
+    // this test makes no claim to prevent that behavior.
 } );
 echo "All address adapter tests passed.\n";

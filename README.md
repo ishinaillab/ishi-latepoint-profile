@@ -20,13 +20,13 @@ Persistence is reread before success and after the native post-save hook. WooCom
 
 ## Verification
 
-### 1.1.1 routing correction
+### Current routing behavior
 
-Removed the unrequested Cancel link. Submissions now run at `wp_loaded` priority 5, before native WC form processing and frontend `template_redirect` handlers. A scoped `wp_redirect` guard interrupts redirects attempted by save callbacks; it is removed before this module's own confirmed-success redirect. If a callback tries to redirect after writing data, the form reports an unconfirmed save and stays in edit mode rather than claiming success. Direct PHP headers/exit in third-party code cannot be intercepted by this WordPress filter.
+The Cancel link is absent. Submissions run at `wp_loaded` priority 5, before native WC form processing and frontend `template_redirect` handlers. After confirmed persistence, the module redirects to the standalone page's address display.
 
 As of 1.1.2, all templates are loaded exclusively from the plugin. Template version headers no longer control loading.
 
-The v1.1.0 module itself did not specify a My Account redirect. The exact live-site callback behind the reported redirect was not reproduced locally; this release fixes the late processing weakness and blocks WordPress redirects during save callbacks. If a redirect persists, inspect the live rendered form/POST and active snippets rather than assuming WooCommerce core processed this module's unique action.
+The temporary redirect guard has been removed after the site owner identified and resolved the redirect causes. The module does not intercept redirects from third-party callbacks. Address-save hooks remain available for extension compatibility; callbacks must be compatible with the standalone workflow.
 
 Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live installation. The live version remains unconfirmed. See `docs/woocommerce-address-audit.md`. GitHub Actions lints PHP and runs `php tests/address-adapter-test.php`; those tests use API doubles and do not replace a real WordPress/WooCommerce browser test.
 
