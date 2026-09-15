@@ -1,14 +1,14 @@
-# Ishi LatePoint Profile 1.1.2
+# Ishi LatePoint Profile 1.2.0
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
 ## Installation
 
-Replace the existing plugin with the complete updated plugin folder, including `includes/` and `templates/`. Add `[ishi_customer_addresses]` to a page. It initially shows both address cards. Edit opens the chosen address on that same page; a confirmed save redirects back to the cards. Validation failures keep the editor and submitted values.
+Replace the existing plugin with the complete updated plugin folder, including `includes/` and `templates/`. Add `[ishi_customer_addresses]` to a page. It initially shows both address cards. Edit opens the chosen address on that same page; a confirmed save restores the cards in place when JavaScript is available. Validation failures keep the editor and submitted values.
 
 All three PHP templates reside in the plugin templates/ directory. Both shortcodes load only these bundled files; there is no child-theme lookup or override. Existing child-theme copies are ignored and do not need updating. Theme CSS still controls appearance.
 
-Exclude the address page from full-page/CDN caching. The module sends no-cache headers and sets DONOTCACHEPAGE, but upstream caches must respect authenticated requests. Render through the normal WordPress frontend lifecycle (including footer scripts), not a separately fetched fragment. Only one address interface per page is supported because WooCommerce locale scripts use fixed field IDs.
+Exclude the address page from full-page/CDN caching. The module sends no-cache headers and sets DONOTCACHEPAGE, but upstream caches must respect authenticated requests. Render through the normal WordPress frontend lifecycle (including footer scripts), not an independently injected shortcode fragment lacking the plugin scripts. Only one address interface per page is supported because WooCommerce locale scripts use fixed field IDs.
 
 ## Ownership and security
 
@@ -31,3 +31,13 @@ The temporary redirect guard has been removed after the site owner identified an
 Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live installation. The live version remains unconfirmed. See `docs/woocommerce-address-audit.md`. GitHub Actions lints PHP and runs `php tests/address-adapter-test.php`; those tests use API doubles and do not replace a real WordPress/WooCommerce browser test.
 
 Before live use, verify billing and shipping saves, country/state changes, validation failures, theme appearance, and any installed address-field extensions on staging.
+
+## In-place address navigation (1.2.0)
+
+Edit links and submissions are progressively enhanced with background requests to the existing same-page URLs. The server still validates, saves through WC_Customer, rereads the result, runs save hooks and confirms it again. Successful POSTs still issue the normal 303 redirect; fetch follows it without navigating the browser. Only the contents of .ishi-customer-addresses are replaced from the returned page. The parent tab, accordion, DOM nodes, URL hash and history are untouched. This is not a redirect guard.
+
+Validation failures return the editor and entered values. Network failures, missing forms, unexpected destinations and unconfirmed display responses retain the current interface with an error; POSTs are never automatically retried. Without JavaScript, the existing full-page links and POST/redirect workflow still work, though parent widget state may reset.
+
+The normal WordPress frontend lifecycle renders the response page on the server, but its surrounding markup and scripts are not installed in the browser. One server-rendered shortcode per page remains supported. Native WooCommerce country/state controls refresh after replacement. Custom field widgets requiring initialization can listen for the bubbling ishi:addresses-updated event on the shortcode; fetched inline scripts are not executed. No Elementor/tab-specific integration is used.
+
+Navigation tests use jsdom to check container preservation, successful transitions, validation, failures, duplicate submissions and unexpected redirects. They complement PHP adapter tests; a real theme/browser check remains appropriate for custom field widgets.

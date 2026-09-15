@@ -8,7 +8,7 @@ if ( empty( $ishi_address_template ) || ! isset( $load_address, $address, $base_
 $page_title = $load_address === 'billing' ? __( 'Billing address', 'woocommerce' ) : __( 'Shipping address', 'woocommerce' );
 do_action( 'woocommerce_before_edit_account_address_form' );
 ?>
-<form method="post" action="<?php echo esc_url( add_query_arg( Ishi_WooCommerce_Addresses::MODE, $load_address, $base_url ) ); ?>" novalidate>
+<form data-ishi-address-form method="post" action="<?php echo esc_url( add_query_arg( Ishi_WooCommerce_Addresses::MODE, $load_address, $base_url ) ); ?>" novalidate>
     <h2><?php echo wp_kses_post( apply_filters( 'woocommerce_my_account_edit_address_title', $page_title, $load_address ) ); ?></h2>
     <div class="woocommerce-address-fields">
         <?php do_action( "woocommerce_before_edit_address_form_{$load_address}" ); ?>

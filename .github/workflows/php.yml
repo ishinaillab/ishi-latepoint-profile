@@ -13,3 +13,9 @@ jobs:
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n 1 php -l
       - name: Test address adapter
         run: php tests/address-adapter-test.php
+
+      - name: Test in-place address navigation
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts jsdom@26.1.0
+          node --check assets/address-navigation.js
+          node --test tests/address-navigation.test.cjs

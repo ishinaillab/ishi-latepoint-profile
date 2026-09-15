@@ -52,6 +52,7 @@ function get_post() { return (object) [ 'post_content' => '[ishi_customer_addres
 function has_shortcode( $p, $s ) { return strpos( $p, '[' . $s . ']' ) !== false; }
 function nocache_headers() {}
 function get_stylesheet_directory() { return __DIR__ . '/nonexistent-child'; }
+function plugins_url( $path, $file ) { return 'https://example.test/plugins/ishi-latepoint-profile/' . $path; }
 function wp_enqueue_script( $h ) { $GLOBALS['scripts'][] = $h; }
 function wp_style_is( ...$a ) { return false; }
 function wp_enqueue_style( $h ) {}
