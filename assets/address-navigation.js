@@ -5,6 +5,8 @@
     const busy = new WeakSet();
 
     function enable(root) {
+        if (busy.has(root)) return;
+        root.querySelectorAll('[data-ishi-address-control]').forEach(node => { node.disabled = false; });
         root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
         root.querySelectorAll('[data-ishi-address-unavailable]').forEach(node => { node.hidden = true; });
     }
@@ -13,8 +15,8 @@
     new MutationObserver(initialize).observe(document.documentElement, { childList: true, subtree: true });
     initialize();
 
-    function samePage(url) {
-        return url.origin === window.location.origin && url.pathname === window.location.pathname;
+    function sameOrigin(url) {
+        return url.origin === window.location.origin;
     }
 
     async function navigate(root, url, form, submitter) {
@@ -32,9 +34,9 @@
             const response = await fetch(url.href, {
                 method: form ? 'POST' : 'GET', body,
                 credentials: 'same-origin', cache: 'no-store', redirect: 'error',
-                headers: { 'X-Ishi-Address-Request': '1', 'Accept': 'application/json' }
+                headers: { 'X-WP-Nonce': root.getAttribute('data-ishi-rest-nonce'), 'Accept': 'application/json' }
             });
-            if (!response.ok || !samePage(new URL(response.url))) throw new Error('Unexpected response');
+            if ((!response.ok && response.status !== 422) || new URL(response.url).href !== url.href) throw new Error('Unexpected response');
             const result = await response.json();
             if (result.ishi_addresses !== true || typeof result.html !== 'string') throw new Error('Invalid response');
             const doc = new DOMParser().parseFromString(result.html, 'text/html');
@@ -50,6 +52,7 @@
             }
             // Do not execute scripts from the fetched full page or replace any parent widgets.
             next.querySelectorAll('script').forEach(node => node.remove());
+            root.setAttribute('data-ishi-rest-nonce', next.getAttribute('data-ishi-rest-nonce') || root.getAttribute('data-ishi-rest-nonce'));
             root.replaceChildren(...Array.from(next.childNodes));
             enable(root);
             if (window.jQuery) {
@@ -72,36 +75,37 @@
             controls.forEach((node, index) => { node.disabled = disabled[index]; });
             root.removeAttribute('aria-busy');
             busy.delete(root);
+            enable(root);
         }
     }
 
-    window.addEventListener('click', function (event) {
-        const button = event.target.closest('[data-ishi-address-save]');
-        if (button) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            const form = button.closest('form[data-ishi-address-form]');
-            const root = button.closest(selector);
-            if (form && root && samePage(new URL(form.getAttribute('action'), document.baseURI))) navigate(root, new URL(form.getAttribute('action'), document.baseURI), form, button);
-            return;
+    function requestFrom(control, form) {
+        const root = control.closest(selector);
+        if (!root) return;
+        try {
+            const url = new URL(control.getAttribute('data-ishi-address-url') || (form && form.getAttribute('data-ishi-address-url')), document.baseURI);
+            if (!sameOrigin(url)) throw new Error('Invalid endpoint');
+            navigate(root, url, form, form ? control : undefined);
+        } catch (error) {
+            const notice = document.createElement('div');
+            notice.className = 'woocommerce-error';
+            notice.setAttribute('role', 'alert');
+            notice.textContent = 'Address editing is unavailable. Please contact support.';
+            root.prepend(notice);
         }
-        const link = event.target.closest('a[data-ishi-address-edit]');
-        if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
-        const root = link.closest(selector);
-        const url = new URL(link.href);
-        if (!root || !samePage(url)) return;
+    }
+    window.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-ishi-address-save], [data-ishi-address-edit]');
+        if (!button) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        navigate(root, url);
+        requestFrom(button, button.hasAttribute('data-ishi-address-save') ? button.closest('form[data-ishi-address-form]') : null);
     }, true);
     window.addEventListener('submit', function (event) {
         const form = event.target;
         if (!form.matches('form[data-ishi-address-form]')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        const root = form.closest(selector);
-        const url = new URL(form.getAttribute('action'), document.baseURI);
-        if (!root || !samePage(url)) return;
-        navigate(root, url, form, event.submitter);
+        requestFrom(form, form);
     }, true);
 }());

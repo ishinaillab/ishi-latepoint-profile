@@ -53,6 +53,30 @@ function has_shortcode( $p, $s ) { return strpos( $p, '[' . $s . ']' ) !== false
 function nocache_headers() {}
 function get_stylesheet_directory() { return __DIR__ . '/nonexistent-child'; }
 function plugins_url( $path, $file ) { return 'https://example.test/plugins/ishi-latepoint-profile/' . $path; }
+function rest_url( $path ) { return 'https://example.test/wp-json/' . $path; }
+function wp_slash( $v ) { return is_array( $v ) ? array_map( 'wp_slash', $v ) : addslashes( (string) $v ); }
+function register_rest_route( $ns, $route, $args ) { $GLOBALS['routes'][ $route ] = $args; }
+class WP_Error {
+    public $code, $message, $data;
+    public function __construct( $code, $message, $data ) { $this->code = $code; $this->message = $message; $this->data = $data; }
+}
+class WP_REST_Response {
+    public $data, $status, $headers = [];
+    public function __construct( $data, $status ) { $this->data = $data; $this->status = $status; }
+    public function header( $key, $value ) { $this->headers[$key] = $value; }
+}
+class AddressRequest {
+    public $type, $body, $nonce, $files = [];
+    public function __construct( $type = '', $body = [] ) { $this->type = $type; $this->body = $body; $this->nonce = wp_create_nonce( 'wp_rest' ); }
+    public function get_header( $key ) { return $this->nonce; }
+    public function get_url_params() { return [ 'type' => $this->type ]; }
+    public function get_body_params() { return $this->body; }
+    public function get_file_params() { return $this->files; }
+}
+function select_view( $type ) {
+    $p = new ReflectionProperty( Ishi_WooCommerce_Addresses::class, 'view' );
+    $p->setAccessible( true ); $p->setValue( null, $type );
+}
 function wp_enqueue_script( $h ) { $GLOBALS['scripts'][] = $h; }
 function wp_style_is( ...$a ) { return false; }
 function wp_enqueue_style( $h ) {}
@@ -158,7 +182,7 @@ class WC_Customer {
 
 require dirname( __DIR__ ) . '/includes/class-ishi-woocommerce-addresses.php';
 function reset_state() {
-    foreach ( [ 'response' => null, 'rendered' => false ] as $key => $value ) {
+    foreach ( [ 'response' => null, 'rendered' => false, 'view' => '' ] as $key => $value ) {
         $p = new ReflectionProperty( Ishi_WooCommerce_Addresses::class, $key ); $p->setAccessible( true ); $p->setValue( null, $value );
     }
 }
@@ -184,10 +208,10 @@ function rejected( $result ) { expect( ! $result['success'] && $GLOBALS['writes'
 function test( $label, $callback ) { fixture(); $callback(); echo 'PASS ' . $label . PHP_EOL; }
 
 test( 'default shows both address cards and standalone links', function () {
-    $html = Ishi_WooCommerce_Addresses::render(); expect( substr_count( $html, 'woocommerce-Address-title' ) === 2 && strpos( $html, 'ishi_address=billing' ) !== false && strpos( $html, '<form' ) === false, 'Incorrect default display.' );
+    $html = Ishi_WooCommerce_Addresses::render(); expect( substr_count( $html, 'woocommerce-Address-title' ) === 2 && strpos( $html, 'data-ishi-address-edit' ) !== false && strpos( $html, 'href=' ) === false && strpos( $html, '<form' ) === false, 'Incorrect default display.' );
 } );
-test( 'billing edit renders current customer fields', function () { $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="billing_city" value="Makati"' ) !== false && strpos( $html, 'name="shipping_city"' ) === false, 'Wrong edit mode.' ); } );
-test( 'shipping edit renders shipping fields', function () { $_GET['ishi_address'] = 'shipping'; $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="shipping_country"' ) !== false && strpos( $html, 'name="billing_country"' ) === false, 'Wrong shipping fields.' ); } );
+test( 'billing edit renders current customer fields', function () { select_view( 'billing' ); $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="billing_city" value="Makati"' ) !== false && strpos( $html, 'name="shipping_city"' ) === false, 'Wrong edit mode.' ); } );
+test( 'shipping edit renders shipping fields', function () { select_view( 'shipping' ); $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="shipping_country"' ) !== false && strpos( $html, 'name="billing_country"' ) === false, 'Wrong shipping fields.' ); } );
 test( 'billing changes only billing of authenticated customer', function () { $other = $GLOBALS['db'][9]; $shipping = $GLOBALS['db'][5]['shipping']; $r = submit( request_data( 'billing', [ 'customer_id' => 9, 'shipping_first_name' => 'attack' ] ) ); expect( $r['success'] && $GLOBALS['db'][5]['shipping'] === $shipping && $GLOBALS['db'][9] === $other, 'Address ownership/isolation failed.' ); } );
 test( 'shipping changes only shipping', function () { $billing = $GLOBALS['db'][5]['billing']; $r = submit( request_data( 'shipping' ) ); expect( $r['success'] && $GLOBALS['db'][5]['billing'] === $billing, 'Billing was altered.' ); } );
 test( 'anonymous requests blocked', function () { $p = request_data(); $GLOBALS['uid'] = 0; rejected( submit( $p ) ); } );
@@ -222,7 +246,7 @@ test( 'ordinary POST is rejected before saving and never redirects', function ()
     expect( strpos( $html, 'No changes were saved' ) !== false, 'Missing failure explanation.' );
 } );
 test( 'editor cannot submit natively before background script is ready', function () {
-    $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render();
+    select_view( 'billing' ); $html = Ishi_WooCommerce_Addresses::render();
     expect( strpos( $html, 'type="button" data-ishi-address-save' ) !== false && strpos( $html, 'data-ishi-address-ready disabled' ) !== false && strpos( $html, 'onsubmit="return false;"' ) !== false, 'Editor can submit natively.' );
 } );
 test( 'save handler runs before native form handlers and frontend routing', function () {
@@ -233,7 +257,7 @@ test( 'save handler runs before native form handlers and frontend routing', func
     expect( $found, 'Address handler registered too late.' );
 } );
 test( 'editor has no Cancel link or native account action', function () {
-    $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render();
+    select_view( 'billing' ); $html = Ishi_WooCommerce_Addresses::render();
     expect( strpos( $html, 'Cancel' ) === false && strpos( $html, 'value="edit_address"' ) === false && strpos( $html, 'woocommerce-edit-address-nonce' ) === false, 'Native layout/action returned.' );
 } );
 test( 'save callbacks are not intercepted by a redirect guard', function () {
@@ -244,29 +268,41 @@ test( 'save callbacks are not intercepted by a redirect guard', function () {
     // this test makes no claim to prevent that behavior.
 } );
 
-test( 'background success returns confirmed cards without redirect or notice token', function () {
-    $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
-    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
-    catch ( JsonSignal $r ) {
-        expect( $r->data['saved'] === true && strpos( $r->data['html'], 'woocommerce-Addresses' ) !== false, 'Missing confirmed cards.' );
-        expect( empty( $GLOBALS['redirects'] ) && empty( $GLOBALS['transients'] ), 'Background save used redirect notice flow.' );
-    }
-} );
-test( 'background validation error returns editor with submitted values', function () {
-    $_POST = request_data( 'billing', [ 'billing_city' => '', 'billing_first_name' => 'Retained' ] );
-    $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
-    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
-    catch ( JsonSignal $r ) { expect( $r->data['saved'] === false && strpos( $r->data['html'], 'value="Retained"' ) !== false && $GLOBALS['writes'] === 0, 'Validation did not retain editor.' ); }
-} );
-test( 'background edit uses authenticated current customer', function () {
-    $_GET['ishi_address'] = 'shipping'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
-    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
-    catch ( JsonSignal $r ) { expect( $r->data['saved'] === null && strpos( $r->data['html'], 'name="shipping_country"' ) !== false && $GLOBALS['writes'] === 0, 'Incorrect editor response.' ); }
-} );
-test( 'anonymous background request cannot read address data', function () {
-    $GLOBALS['uid'] = 0; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
-    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
-    catch ( JsonSignal $r ) { expect( $r->status === 401 && $r->data['html'] === '', 'Anonymous address disclosed.' ); }
-} );
-echo "All address adapter tests passed.\\n";
 
+test( 'REST permissions reject anonymous users and missing or invalid nonces', function () {
+    $r = new AddressRequest( 'billing' ); $GLOBALS['uid'] = 0;
+    expect( Ishi_WooCommerce_Addresses::rest_read( $r ) instanceof WP_Error, 'Anonymous request allowed.' );
+    $GLOBALS['uid'] = 5; $r->nonce = '';
+    expect( Ishi_WooCommerce_Addresses::rest_save( $r ) instanceof WP_Error && $GLOBALS['writes'] === 0, 'Missing REST nonce allowed.' );
+    $r->nonce = 'bad'; expect( Ishi_WooCommerce_Addresses::rest_read( $r ) instanceof WP_Error, 'Invalid REST nonce allowed.' );
+} );
+test( 'REST success returns verified cards without redirects and preserves POST context', function () {
+    $original = $_POST = [ 'untouched' => 'yes' ];
+    $r = Ishi_WooCommerce_Addresses::rest_save( new AddressRequest( 'billing', wp_unslash( request_data() ) ) );
+    expect( $r->status === 200 && $r->data['saved'] === true && strpos( $r->data['html'], 'woocommerce-Addresses' ) !== false, 'Missing successful cards.' );
+    expect( $_POST === $original && empty( $GLOBALS['redirects'] ), 'Context or navigation changed.' );
+} );
+test( 'REST validation returns 422 and preserves entered values', function () {
+    $body = wp_unslash( request_data( 'billing', [ 'billing_city' => '', 'billing_first_name' => 'Retained' ] ) );
+    $r = Ishi_WooCommerce_Addresses::rest_save( new AddressRequest( 'billing', $body ) );
+    expect( $r->status === 422 && $r->data['saved'] === false && strpos( $r->data['html'], 'Retained' ) !== false && $GLOBALS['writes'] === 0, 'Invalid REST save.' );
+} );
+test( 'REST route type cannot be overwritten by body fields', function () {
+    $r = Ishi_WooCommerce_Addresses::rest_save( new AddressRequest( 'shipping', wp_unslash( request_data() ) ) );
+    expect( $r instanceof WP_Error && $GLOBALS['writes'] === 0, 'Conflicting type accepted.' );
+    expect( Ishi_WooCommerce_Addresses::rest_read( new AddressRequest( '../billing' ) ) instanceof WP_Error, 'Invalid route accepted.' );
+} );
+test( 'REST read selects shipping and is private and non-cacheable', function () {
+    $r = Ishi_WooCommerce_Addresses::rest_read( new AddressRequest( 'shipping' ) );
+    expect( $r->data['view'] === 'shipping' && strpos( $r->data['html'], 'name="shipping_country"' ) !== false && $r->headers['Cache-Control'] === 'private, no-store, max-age=0', 'Invalid editor response.' );
+} );
+test( 'REST input slashing preserves apostrophes and custom validation context', function () {
+    $body = wp_unslash( request_data() ); $body['billing_first_name'] = "O'Brien";
+    $r = Ishi_WooCommerce_Addresses::rest_save( new AddressRequest( 'billing', $body ) );
+    expect( $r->data['saved'] && $GLOBALS['db'][5]['billing']['first_name'] === "O'Brien", 'Slashing corrupted value.' );
+} );
+test( 'page query parameters cannot change shortcode view', function () {
+    $_GET['ishi_address'] = 'shipping';
+    expect( strpos( Ishi_WooCommerce_Addresses::render(), 'woocommerce-Addresses' ) !== false, 'Page query selected editor.' );
+} );
+echo "All address adapter tests passed." . PHP_EOL;

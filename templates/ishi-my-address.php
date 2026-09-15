@@ -4,9 +4,10 @@
  * Ishi Address Template: 2
  */
 defined( 'ABSPATH' ) || exit;
-if ( empty( $ishi_address_template ) || ! isset( $get_addresses, $customer_id, $base_url ) ) { return; }
+if ( empty( $ishi_address_template ) || ! isset( $get_addresses, $customer_id ) ) { return; }
 ?>
 <p><?php echo wp_kses_post( apply_filters( 'woocommerce_my_account_my_address_description', esc_html__( 'The following addresses will be used on the checkout page by default.', 'woocommerce' ) ) ); ?></p>
+<p data-ishi-address-unavailable role="status"><?php esc_html_e( 'Address editing is loading or unavailable. If this message remains, enable JavaScript or contact support.', 'ishi-latepoint-profile' ); ?></p>
 <div class="u-columns woocommerce-Addresses col2-set addresses">
     <?php $column = 0; foreach ( $get_addresses as $name => $address_title ) :
         ++$column;
@@ -15,9 +16,9 @@ if ( empty( $ishi_address_template ) || ! isset( $get_addresses, $customer_id, $
         <div class="u-column<?php echo esc_attr( $column ); ?> col-<?php echo esc_attr( $column ); ?> woocommerce-Address">
             <header class="woocommerce-Address-title title">
                 <h2><?php echo esc_html( $address_title ); ?></h2>
-                <a href="<?php echo esc_url( add_query_arg( Ishi_WooCommerce_Addresses::MODE, $name, $base_url ) ); ?>" class="edit" data-ishi-address-edit>
+                <button type="button" disabled data-ishi-address-control data-ishi-address-url="<?php echo esc_url( Ishi_WooCommerce_Addresses::endpoint( $name ) ); ?>" class="edit" data-ishi-address-edit style="background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">
                     <?php printf( $address ? esc_html__( 'Edit %s', 'woocommerce' ) : esc_html__( 'Add %s', 'woocommerce' ), esc_html( $address_title ) ); ?>
-                </a>
+                </button>
             </header>
             <address>
                 <?php

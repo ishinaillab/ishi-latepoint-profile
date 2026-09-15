@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { JSDOM } = require('jsdom');
 const script = fs.readFileSync(require('node:path').join(__dirname, '../assets/address-navigation.js'), 'utf8');
-const cards = '<div class="woocommerce-Addresses"><h2>Addresses</h2><a data-ishi-address-edit href="/dashboard/?ishi_address=billing">Edit</a></div>';
-const editor = '<form data-ishi-address-form action="https://example.test/dashboard/?ishi_address=billing"><h2>Billing</h2><p data-ishi-address-unavailable>Loading</p><fieldset data-ishi-address-ready disabled><input name="billing_city" value="Makati"><input type="hidden" name="action" value="ishi_save_customer_address"><input name="ishi_address_nonce" value="nonce"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save</button></fieldset></form>';
-const html = inner => '<div class="ishi-customer-addresses">' + inner + '</div>';
+const cards = '<div class="woocommerce-Addresses"><h2>Addresses</h2><button type="button" disabled data-ishi-address-control data-ishi-address-edit data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/billing">Edit</button></div>';
+const editor = '<form data-ishi-address-form data-ishi-address-url="https://example.test/wp-json/ishi-profile/v1/addresses/billing"><h2>Billing</h2><p data-ishi-address-unavailable>Loading</p><fieldset data-ishi-address-ready disabled><input name="billing_city" value="Makati"><input type="hidden" name="action" value="ishi_save_customer_address"><input name="ishi_address_nonce" value="nonce"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save</button></fieldset></form>';
+const html = inner => '<div class="ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce">' + inner + '</div>';
 function setup(inner = cards) {
     const dom = new JSDOM('<button aria-selected="true">Third tab</button><details open><summary>Addresses</summary><section id="third">' + html(inner) + '</section></details>', { url: 'https://example.test/dashboard/#third', runScripts: 'outside-only' });
     const w = dom.window;
@@ -14,12 +14,12 @@ function setup(inner = cards) {
     return w;
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 20));
-function response(inner, saving = false) { return { ok: true, redirected: saving, url: 'https://example.test/dashboard/' + (saving ? '?ishi_address_notice=token' : '?ishi_address=billing'), json: async () => ({ ishi_addresses: true, saved: saving, html: html(inner) }) }; }
+function response(inner, saving = false) { return { ok: true, redirected: saving, url: 'https://example.test/wp-json/ishi-profile/v1/addresses/billing', json: async () => ({ ishi_addresses: true, saved: saving, html: html(inner) }) }; }
 function submit(w) { w.document.querySelector('form').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true })); }
 test('edit and confirmed save replace only shortcode contents inside an open container', async () => {
     const w = setup(); const parent = w.document.querySelector('#third'); const root = parent.firstChild; const originalURL = w.location.href;
     w.fetch = async () => response(editor);
-    w.document.querySelector('a').click(); await tick();
+    w.document.querySelector('[data-ishi-address-edit]').click(); await tick();
     assert.ok(root.querySelector('form'));
     w.fetch = async (url, options) => { assert.equal(options.method, 'POST'); assert.equal(options.body.get('ishi_address_nonce'), 'nonce'); assert.equal(options.body.get('billing_city'), 'Makati'); return response(cards, true); };
     submit(w); await tick();
@@ -28,7 +28,7 @@ test('edit and confirmed save replace only shortcode contents inside an open con
     w.close();
 });
 test('validation failure keeps edit form and server-returned values', async () => {
-    const w = setup(editor); w.fetch = async () => response('<div role="alert">Required</div>' + editor.replace('Makati', 'Retained'));
+    const w = setup(editor); w.fetch = async () => ({ ...response('<div role="alert">Required</div>' + editor.replace('Makati', 'Retained')), ok: false, status: 422 });
     submit(w); await tick(); assert.equal(w.document.querySelector('input').value, 'Retained'); assert.ok(w.document.querySelector('form')); w.close();
 });
 test('network failure retains entries, releases controls and never retries', async () => {
@@ -50,7 +50,7 @@ test('cards without a confirmed redirect are not treated as a successful save', 
 });
 test('fetched page scripts are not inserted', async () => {
     const w = setup(); w.fetch = async () => response(editor + '<script>window.unwanted = true;</script>');
-    w.document.querySelector('a').click(); await tick(); assert.equal(w.document.querySelector('script'), null); assert.equal(w.unwanted, undefined); w.close();
+    w.document.querySelector('[data-ishi-address-edit]').click(); await tick(); assert.equal(w.document.querySelector('script'), null); assert.equal(w.unwanted, undefined); w.close();
 });
 
 test('capture handler handles submit before parent handlers stop propagation', async () => {
@@ -58,7 +58,7 @@ test('capture handler handles submit before parent handlers stop propagation', a
     w.document.querySelector('#third').addEventListener('submit', event => { event.stopPropagation(); });
     w.fetch = async (url, options) => {
         requests++;
-        assert.equal(options.headers['X-Ishi-Address-Request'], '1');
+        assert.equal(options.headers['X-WP-Nonce'], 'rest-nonce');
         assert.equal(options.redirect, 'error');
         return response(cards, true);
     };
@@ -96,10 +96,17 @@ test('Save works when a named control masks form.action', async () => {
     Object.defineProperty(form, 'action', { value: form.querySelector('[name="action"]') });
     let calls = 0;
     w.fetch = async (url, options) => {
-        calls++; assert.equal(url, 'https://example.test/dashboard/?ishi_address=billing');
+        calls++; assert.equal(url, 'https://example.test/wp-json/ishi-profile/v1/addresses/billing');
         assert.equal(options.body.get('action'), 'ishi_save_customer_address');
         return response(cards, true);
     };
     form.querySelector('[data-ishi-address-save]').click(); await tick();
     assert.equal(calls, 1); assert.ok(w.document.querySelector('.woocommerce-Addresses')); w.close();
+});
+
+test('Edit is a disabled non-navigating button without initialization', () => {
+    const dom = new JSDOM(html(cards));
+    const edit = dom.window.document.querySelector('[data-ishi-address-edit]');
+    assert.equal(edit.tagName, 'BUTTON'); assert.equal(edit.disabled, true);
+    assert.equal(edit.getAttribute('href'), null); dom.window.close();
 });

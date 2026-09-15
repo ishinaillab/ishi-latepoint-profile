@@ -43,3 +43,7 @@ Successful saves reread all intended field values from a fresh customer, fire th
 ## Limits to verify in the real installation
 
 The tests exercise adapter behavior with WP/WC doubles. A live database, browser, theme styling, exact third-party extensions, and live plugin version have not been verified. The adapter's prefix/country/no-upload rules are deliberate boundaries for standalone custom fields. Hooks conditional on My Account routing will not run their conditional functionality here. WooCommerce provides no transaction across all customer metadata and arbitrary hook side effects; a partial write remains possible and never receives an unconditional success message.
+
+## 1.3.0 transport update
+
+The native WC audit above remains the basis for save_submission. Current transport uses authenticated REST endpoints registered by register_routes(), with rest_permission(), rest_read() and rest_save(). Page query parameters no longer select the view; Edit buttons request their strict billing/shipping route. REST callbacks return WP_REST_Response objects (HTTP 422 on validation failure), never wp_send_json or a redirect. The old page handler only rejects obsolete POST submissions. Form templates use data endpoint attributes, not navigation links or submit URLs. See README.md for the current route and test contract.

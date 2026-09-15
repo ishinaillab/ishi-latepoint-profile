@@ -5,27 +5,34 @@ const fs = require('node:fs');
     const browser = await chromium.launch();
     try {
         const page = await browser.newPage();
-        const editor = '<div class="ishi-customer-addresses"><form data-ishi-address-form action="/dashboard/?ishi_address=billing" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><input name="action" value="ishi_save_customer_address" type="hidden"><input name="billing_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save changes</button></fieldset></form></div>';
-        const cards = '<div class="ishi-customer-addresses"><div class="woocommerce-Addresses">Updated address</div></div>';
-        let posts = 0;
+        const wrap = inner => '<div class="ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce">' + inner + '</div>';
+        const cards = wrap('<div class="woocommerce-Addresses">Updated address' + ['billing','shipping'].map(type => '<button disabled type="button" data-ishi-address-control data-ishi-address-edit data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '">Edit ' + type + '</button>').join('') + '</div>');
+        const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button></fieldset></form>');
+        let documents = 0, posts = 0;
         await page.route('https://example.test/**', async route => {
-            if (route.request().method() === 'POST') {
-                posts++;
-                assert.equal(route.request().headers()['x-ishi-address-request'], '1');
-                assert.match(route.request().postData(), /ishi_save_customer_address/);
-                return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ishi_addresses: true, saved: true, html: cards }) });
+            const req = route.request();
+            if (req.url().includes('/wp-json/')) {
+                assert.equal(req.headers()['x-wp-nonce'], 'rest-nonce');
+                const type = req.url().endsWith('shipping') ? 'shipping' : 'billing';
+                const saved = req.method() === 'POST';
+                if (saved) { posts++; assert.match(req.postData(), /ishi_save_customer_address/); }
+                return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ishi_addresses: true, saved: saved ? true : null, html: saved ? cards : editor(type) }) });
             }
-            return route.fulfill({ contentType: 'text/html', body: '<details open><summary>Third panel</summary>' + editor + '</details>' });
+            documents++;
+            return route.fulfill({ contentType: 'text/html', body: '<details open><summary>Third panel</summary>' + cards + '</details>' });
         });
         await page.goto('https://example.test/dashboard/#third');
-        // Verify the actual browser behavior that the old jsdom fixture missed.
-        assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
         await page.addScriptTag({ content: fs.readFileSync(require('node:path').join(__dirname, '../assets/address-navigation.js'), 'utf8') });
-        await page.getByRole('button', { name: 'Save changes' }).click();
-        await page.locator('.woocommerce-Addresses').waitFor();
-        assert.equal(posts, 1);
-        assert.equal(page.url(), 'https://example.test/dashboard/#third');
-        assert.equal(await page.locator('details').evaluate(node => node.open), true);
-        console.log('PASS Chromium: named action control, confirmed save, cards restored, parent open, no page navigation');
+        for (const type of ['billing','shipping']) {
+            await page.getByRole('button', { name: 'Edit ' + type }).click();
+            await page.locator('form').waitFor();
+            assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
+            await page.getByRole('button', { name: 'Save changes' }).click();
+            await page.locator('.woocommerce-Addresses').waitFor();
+            assert.equal(page.url(), 'https://example.test/dashboard/#third');
+            assert.equal(await page.locator('details').evaluate(node => node.open), true);
+        }
+        assert.equal(posts, 2); assert.equal(documents, 1);
+        console.log('PASS Chromium: billing and shipping Edit/Save via REST; only initial document request; parent remains open.');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

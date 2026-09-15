@@ -4,11 +4,11 @@
  * Ishi Address Template: 2
  */
 defined( 'ABSPATH' ) || exit;
-if ( empty( $ishi_address_template ) || ! isset( $load_address, $address, $base_url, $revision ) || ! Ishi_WooCommerce_Addresses::valid_type( $load_address ) ) { return; }
+if ( empty( $ishi_address_template ) || ! isset( $load_address, $address, $revision ) || ! Ishi_WooCommerce_Addresses::valid_type( $load_address ) ) { return; }
 $page_title = $load_address === 'billing' ? __( 'Billing address', 'woocommerce' ) : __( 'Shipping address', 'woocommerce' );
 do_action( 'woocommerce_before_edit_account_address_form' );
 ?>
-<form data-ishi-address-form method="post" action="<?php echo esc_url( add_query_arg( Ishi_WooCommerce_Addresses::MODE, $load_address, $base_url ) ); ?>" novalidate onsubmit="return false;">
+<form data-ishi-address-form method="post" data-ishi-address-url="<?php echo esc_url( Ishi_WooCommerce_Addresses::endpoint( $load_address ) ); ?>" novalidate onsubmit="return false;">
     <h2><?php echo wp_kses_post( apply_filters( 'woocommerce_my_account_edit_address_title', $page_title, $load_address ) ); ?></h2>
     <p data-ishi-address-unavailable role="status"><?php esc_html_e( 'Background address saving is loading or unavailable. If this message remains, enable JavaScript or contact support. No changes will be submitted.', 'ishi-latepoint-profile' ); ?></p>
     <fieldset data-ishi-address-ready disabled style="border:0;margin:0;padding:0;min-width:0">
