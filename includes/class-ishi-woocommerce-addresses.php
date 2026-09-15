@@ -205,11 +205,6 @@ final class Ishi_WooCommerce_Addresses {
         $values = [];
         $started = false;
         $previous_notices = null;
-        $redirect_guard = static function ( $location ) {
-            // Stop redirecting callbacks before their following exit can abandon this handler.
-            throw new RuntimeException( 'An address-save extension attempted to redirect the request.' );
-        };
-        add_filter( 'wp_redirect', $redirect_guard, PHP_INT_MAX );
         try {
             if ( ! empty( $_FILES ) ) { return self::failure( $type, [ __( 'This address form does not accept file uploads.', 'ishi-latepoint-profile' ) ] ); }
             $customer = self::customer();
@@ -323,7 +318,6 @@ final class Ishi_WooCommerce_Addresses {
                 ? __( 'The save could not be fully confirmed. Some changes may already be stored. Review the address before trying again.', 'ishi-latepoint-profile' )
                 : __( 'The address could not be saved. Please check the fields or contact support.', 'ishi-latepoint-profile' ) ], $values );
         } finally {
-            remove_filter( 'wp_redirect', $redirect_guard, PHP_INT_MAX );
             if ( $previous_notices !== null ) { wc_set_notices( $previous_notices ); }
         }
     }
