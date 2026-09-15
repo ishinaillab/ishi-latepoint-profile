@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const { JSDOM } = require('jsdom');
 const script = fs.readFileSync(require('node:path').join(__dirname, '../assets/address-navigation.js'), 'utf8');
 const cards = '<div class="woocommerce-Addresses"><h2>Addresses</h2><a data-ishi-address-edit href="/dashboard/?ishi_address=billing">Edit</a></div>';
-const editor = '<form data-ishi-address-form action="https://example.test/dashboard/?ishi_address=billing"><h2>Billing</h2><p data-ishi-address-unavailable>Loading</p><fieldset data-ishi-address-ready disabled><input name="billing_city" value="Makati"><input name="ishi_address_nonce" value="nonce"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save</button></fieldset></form>';
+const editor = '<form data-ishi-address-form action="https://example.test/dashboard/?ishi_address=billing"><h2>Billing</h2><p data-ishi-address-unavailable>Loading</p><fieldset data-ishi-address-ready disabled><input name="billing_city" value="Makati"><input type="hidden" name="action" value="ishi_save_customer_address"><input name="ishi_address_nonce" value="nonce"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save</button></fieldset></form>';
 const html = inner => '<div class="ishi-customer-addresses">' + inner + '</div>';
 function setup(inner = cards) {
     const dom = new JSDOM('<button aria-selected="true">Third tab</button><details open><summary>Addresses</summary><section id="third">' + html(inner) + '</section></details>', { url: 'https://example.test/dashboard/#third', runScripts: 'outside-only' });
@@ -88,4 +88,18 @@ test('without script initialization editor stays disabled with visible explanati
     assert.equal(dom.window.document.querySelector('[data-ishi-address-save]').type, 'button');
     assert.equal(dom.window.document.querySelector('[data-ishi-address-unavailable]').hidden, false);
     dom.window.close();
+});
+
+test('Save works when a named control masks form.action', async () => {
+    const w = setup(editor); const form = w.document.querySelector('form');
+    // jsdom does not implement every browser named-property override.
+    Object.defineProperty(form, 'action', { value: form.querySelector('[name="action"]') });
+    let calls = 0;
+    w.fetch = async (url, options) => {
+        calls++; assert.equal(url, 'https://example.test/dashboard/?ishi_address=billing');
+        assert.equal(options.body.get('action'), 'ishi_save_customer_address');
+        return response(cards, true);
+    };
+    form.querySelector('[data-ishi-address-save]').click(); await tick();
+    assert.equal(calls, 1); assert.ok(w.document.querySelector('.woocommerce-Addresses')); w.close();
 });

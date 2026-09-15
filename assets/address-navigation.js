@@ -82,7 +82,7 @@
             event.stopImmediatePropagation();
             const form = button.closest('form[data-ishi-address-form]');
             const root = button.closest(selector);
-            if (form && root && samePage(new URL(form.action))) navigate(root, new URL(form.action), form, button);
+            if (form && root && samePage(new URL(form.getAttribute('action'), document.baseURI))) navigate(root, new URL(form.getAttribute('action'), document.baseURI), form, button);
             return;
         }
         const link = event.target.closest('a[data-ishi-address-edit]');
@@ -100,7 +100,7 @@
         event.preventDefault();
         event.stopImmediatePropagation();
         const root = form.closest(selector);
-        const url = new URL(form.action);
+        const url = new URL(form.getAttribute('action'), document.baseURI);
         if (!root || !samePage(url)) return;
         navigate(root, url, form, event.submitter);
     }, true);

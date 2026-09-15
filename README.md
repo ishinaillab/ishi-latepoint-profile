@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.2.2
+# Ishi LatePoint Profile 1.2.3
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -32,7 +32,7 @@ Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live i
 
 Before live use, verify billing and shipping saves, country/state changes, validation failures, theme appearance, and any installed address-field extensions on staging.
 
-## In-place address navigation (1.2.2)
+## In-place address navigation (1.2.3)
 
 The navigation script loads in the document head without WooCommerce dependencies, including on pages whose builder stores the shortcode outside post_content. A capture-phase listener handles this shortcode's Edit and Save events before parent widgets can stop their propagation.
 
@@ -42,4 +42,8 @@ Only the shortcode's children are replaced. Parent nodes, tabs, accordions, URL 
 
 Address saves now require the background transport. Save is a non-submitting button, and the form fields remain disabled with a visible explanation until the navigation script initializes. Enter-key submissions are intercepted as well. Ordinary POSTs are rejected before any persistence; there is no address success redirect or notice-token generation. JavaScript-disabled or blocked browsers cannot save addresses through this interface.
 
-If the loading/unavailable message remains, check that assets/address-navigation.js?ver=1.2.2 is served and exclude it from script-delay rules. This failure leaves the current page in place rather than submitting normally. A page-level request explicitly forced by unrelated third-party code cannot be prevented by this form; the server still rejects a non-background save before writing.
+If the loading/unavailable message remains, check that assets/address-navigation.js?ver=1.2.3 is served and exclude it from script-delay rules. This failure leaves the current page in place rather than submitting normally. A page-level request explicitly forced by unrelated third-party code cannot be prevented by this form; the server still rejects a non-background save before writing.
+
+### Save button URL correction
+
+The hidden input named action can mask the browser's form.action property. Version 1.2.3 reads the action attribute explicitly in both Save-click and submit handlers. The field still sends the required PHP action unchanged. Regression coverage includes the named control and a real Chromium browser test.

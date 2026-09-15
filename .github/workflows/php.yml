@@ -19,3 +19,9 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts jsdom@26.1.0
           node --check assets/address-navigation.js
           node --test tests/address-navigation.test.cjs
+
+      - name: Test address form in Chromium
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.51.1
+          npx playwright install --with-deps chromium
+          node tests/address-browser.cjs

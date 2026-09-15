@@ -29,7 +29,7 @@ final class Ishi_WooCommerce_Addresses {
     public static function enqueue_if_present() {
         // Page builders may store shortcodes outside post_content. Load the small
         // independent event handler in the head, without waiting for WC scripts.
-        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.2', false );
+        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.3', false );
         $post = get_post();
         if ( $post && has_shortcode( $post->post_content, self::SHORTCODE ) ) { self::assets(); }
     }
@@ -39,7 +39,7 @@ final class Ishi_WooCommerce_Addresses {
         // Same handles as WC_Shortcode_My_Account::edit_address(), without loading that controller.
         wp_enqueue_script( 'wc-country-select' );
         wp_enqueue_script( 'wc-address-i18n' );
-        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.2', false );
+        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.3', false );
         foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { wp_enqueue_style( $handle ); }
         }
