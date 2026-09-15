@@ -22,7 +22,7 @@ Persistence is reread before success and after the native post-save hook. WooCom
 
 ### Current routing behavior
 
-The Cancel link is absent. Submissions run at `wp_loaded` priority 5, before native WC form processing and frontend `template_redirect` handlers. After confirmed persistence, the module redirects to the standalone page's address display.
+The Cancel link is absent. Submissions run at `wp_loaded` priority 5, before native WC form processing and frontend `template_redirect` handlers. After confirmed persistence, the module returns the address display as JSON and the browser replaces only the shortcode contents.
 
 As of 1.1.2, all templates are loaded exclusively from the plugin. Template version headers no longer control loading.
 

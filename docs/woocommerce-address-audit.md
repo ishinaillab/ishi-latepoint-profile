@@ -38,7 +38,7 @@ Presentation retains the supplied description/title filters, `woocommerce_my_acc
 
 The nonce action is `ishi_save_customer_address_{billing|shipping}`, field `ishi_address_nonce`. Identity is always server-derived. Only native/filter-defined fields in the selected namespace can become setters or metadata. The adapter blocks validation callbacks from changing customer identity or unrelated core properties. It does not sandbox trusted PHP hooks.
 
-Successful saves reread all intended field values from a fresh customer, fire the native post-save hook, and verify again. A 303 redirect removes edit mode and uses an opaque, session-bound, expiring success-notice token. Failed saves render their errors and entered values without redirecting. No address values are stored in URLs or temporary notice storage. Authentication/nonce/stale-form rejection intentionally reloads current data rather than retaining untrusted or outdated values.
+Successful saves reread all intended field values from a fresh customer, fire the native post-save hook, and verify again. As of 1.2.2, a JSON response restores the display without a redirect or success-notice token; ordinary POST submissions are rejected before saving. Failed saves render their errors and entered values without redirecting. No address values are stored in URLs or temporary notice storage. Authentication/nonce/stale-form rejection intentionally reloads current data rather than retaining untrusted or outdated values.
 
 ## Limits to verify in the real installation
 
