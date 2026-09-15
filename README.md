@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.2.1
+# Ishi LatePoint Profile 1.2.2
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -32,7 +32,7 @@ Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live i
 
 Before live use, verify billing and shipping saves, country/state changes, validation failures, theme appearance, and any installed address-field extensions on staging.
 
-## In-place address navigation (1.2.1)
+## In-place address navigation (1.2.2)
 
 The navigation script loads in the document head without WooCommerce dependencies, including on pages whose builder stores the shortcode outside post_content. A capture-phase listener handles this shortcode's Edit and Save events before parent widgets can stop their propagation.
 
@@ -40,6 +40,6 @@ Background requests send X-Ishi-Address-Request: 1 to the same page. GET renders
 
 Only the shortcode's children are replaced. Parent nodes, tabs, accordions, URL and history remain untouched. Unexpected redirects are rejected by fetch, not intercepted through a PHP redirect filter. Network/response failures retain entered values and are never automatically retried. Custom field widgets can listen for ishi:addresses-updated; fetched inline scripts are not executed. Native country/state controls are refreshed if their scripts are available.
 
-The original page-based fallback remains for JavaScript-disabled browsers. Its successful-save handler creates a session-bound transient token, places it in ishi_address_notice, and sends a 303 redirect. The following GET consumes the token to show success and renders cards. This reload is for feedback/navigation, not persistence, and is not used by the enhanced flow.
+Address saves now require the background transport. Save is a non-submitting button, and the form fields remain disabled with a visible explanation until the navigation script initializes. Enter-key submissions are intercepted as well. Ordinary POSTs are rejected before any persistence; there is no address success redirect or notice-token generation. JavaScript-disabled or blocked browsers cannot save addresses through this interface.
 
-If the browser address bar reaches ishi_address_notice after saving with JavaScript enabled, the navigation script was not active for that submission. Check that assets/address-navigation.js?ver=1.2.1 is served, and clear or exclude it from script-delay/page-cache rules. The live site's script delivery was not inspected in this development environment. Tests cover background success/failure/authentication, container preservation and a parent stopping submit propagation; real site/theme integration still needs verification.
+If the loading/unavailable message remains, check that assets/address-navigation.js?ver=1.2.2 is served and exclude it from script-delay rules. This failure leaves the current page in place rather than submitting normally. A page-level request explicitly forced by unrelated third-party code cannot be prevented by this form; the server still rejects a non-background save before writing.

@@ -4,6 +4,15 @@
     const selector = '.ishi-customer-addresses';
     const busy = new WeakSet();
 
+    function enable(root) {
+        root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
+        root.querySelectorAll('[data-ishi-address-unavailable]').forEach(node => { node.hidden = true; });
+    }
+    function initialize() { document.querySelectorAll(selector).forEach(enable); }
+    document.addEventListener('DOMContentLoaded', initialize);
+    new MutationObserver(initialize).observe(document.documentElement, { childList: true, subtree: true });
+    initialize();
+
     function samePage(url) {
         return url.origin === window.location.origin && url.pathname === window.location.pathname;
     }
@@ -35,13 +44,14 @@
             const editor = next.querySelector('form[data-ishi-address-form]');
             const cards = next.querySelector('.woocommerce-Addresses');
             if (!editor && !cards) throw new Error('Address view missing');
-            // A POST may show cards only after our server's confirmed-success redirect.
+            // A POST may show cards only after our server's explicit persistence confirmation.
             if (form && cards && result.saved !== true) {
                 throw new Error('Save confirmation missing');
             }
             // Do not execute scripts from the fetched full page or replace any parent widgets.
             next.querySelectorAll('script').forEach(node => node.remove());
             root.replaceChildren(...Array.from(next.childNodes));
+            enable(root);
             if (window.jQuery) {
                 window.jQuery(root).find('#billing_country, #shipping_country').trigger('refresh');
             }
@@ -66,6 +76,15 @@
     }
 
     window.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-ishi-address-save]');
+        if (button) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const form = button.closest('form[data-ishi-address-form]');
+            const root = button.closest(selector);
+            if (form && root && samePage(new URL(form.action))) navigate(root, new URL(form.action), form, button);
+            return;
+        }
         const link = event.target.closest('a[data-ishi-address-edit]');
         if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
         const root = link.closest(selector);
@@ -78,10 +97,11 @@
     window.addEventListener('submit', function (event) {
         const form = event.target;
         if (!form.matches('form[data-ishi-address-form]')) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
         const root = form.closest(selector);
         const url = new URL(form.action);
         if (!root || !samePage(url)) return;
-        event.preventDefault();
         navigate(root, url, form, event.submitter);
     }, true);
 }());

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const { JSDOM } = require('jsdom');
 const script = fs.readFileSync(require('node:path').join(__dirname, '../assets/address-navigation.js'), 'utf8');
 const cards = '<div class="woocommerce-Addresses"><h2>Addresses</h2><a data-ishi-address-edit href="/dashboard/?ishi_address=billing">Edit</a></div>';
-const editor = '<form data-ishi-address-form action="https://example.test/dashboard/?ishi_address=billing"><h2>Billing</h2><input name="billing_city" value="Makati"><input name="ishi_address_nonce" value="nonce"><button name="ishi_save_address" value="billing">Save</button></form>';
+const editor = '<form data-ishi-address-form action="https://example.test/dashboard/?ishi_address=billing"><h2>Billing</h2><p data-ishi-address-unavailable>Loading</p><fieldset data-ishi-address-ready disabled><input name="billing_city" value="Makati"><input name="ishi_address_nonce" value="nonce"><button type="button" data-ishi-address-save name="ishi_save_address" value="billing">Save</button></fieldset></form>';
 const html = inner => '<div class="ishi-customer-addresses">' + inner + '</div>';
 function setup(inner = cards) {
     const dom = new JSDOM('<button aria-selected="true">Third tab</button><details open><summary>Addresses</summary><section id="third">' + html(inner) + '</section></details>', { url: 'https://example.test/dashboard/#third', runScripts: 'outside-only' });
@@ -71,4 +71,21 @@ test('HTML instead of JSON never falls back to a normal form submission', async 
     const w = setup(editor); let calls = 0;
     w.fetch = async () => { calls++; return { ok: true, url: w.location.href, json: async () => { throw Error('HTML'); } }; };
     submit(w); await tick(); assert.equal(calls, 1); assert.ok(w.document.querySelector('form')); assert.ok(w.document.querySelector('[role="alert"]')); w.close();
+});
+
+test('Save button performs background POST without a native submit', async () => {
+    const w = setup(editor); let requests = 0; let nativeSubmits = 0;
+    w.document.querySelector('form').addEventListener('submit', () => nativeSubmits++);
+    assert.equal(w.document.querySelector('fieldset').disabled, false);
+    assert.equal(w.document.querySelector('[data-ishi-address-unavailable]').hidden, true);
+    w.fetch = async (url, options) => { requests++; assert.equal(options.method, 'POST'); return response(cards, true); };
+    w.document.querySelector('[data-ishi-address-save]').click(); await tick();
+    assert.equal(requests, 1); assert.equal(nativeSubmits, 0); assert.ok(w.document.querySelector('.woocommerce-Addresses')); w.close();
+});
+test('without script initialization editor stays disabled with visible explanation', () => {
+    const dom = new JSDOM(html(editor));
+    assert.equal(dom.window.document.querySelector('fieldset').disabled, true);
+    assert.equal(dom.window.document.querySelector('[data-ishi-address-save]').type, 'button');
+    assert.equal(dom.window.document.querySelector('[data-ishi-address-unavailable]').hidden, false);
+    dom.window.close();
 });

@@ -214,11 +214,16 @@ test( 'silent persistence failure detected by reload', function () { $GLOBALS['s
 test( 'extension post-save error retains editor', function () { $GLOBALS['actions']['woocommerce_customer_save_address'] = function () { wc_add_notice( 'Downstream failed', 'error' ); }; $r = submit( request_data() ); expect( ! $r['success'] && $r['type'] === 'billing', 'Post-save error masked.' ); } );
 test( 'validation hook cannot change customer identity', function () { $GLOBALS['actions']['woocommerce_after_save_address_validation'] = function ( $id, $type, $fields, $customer ) { $customer->set_id( 9 ); }; rejected( submit( request_data() ) ); } );
 test( 'country change reselects native field definitions', function () { $GLOBALS['filters']['woocommerce_billing_fields'] = function ( $f, $c ) { if ( $c === 'US' ) { $f['billing_city']['required'] = false; } return $f; }; $r = submit( request_data( 'billing', [ 'billing_country' => 'US', 'billing_state' => 'CA', 'billing_postcode' => '90210', 'billing_city' => '' ] ) ); expect( $r['success'], 'Country-specific fields ignored.' ); } );
-test( 'successful POST redirects to the standalone display', function () {
-    $GLOBALS['interrupt_redirect'] = true;
-    $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['REQUEST_URI'] = '/address-book/?ishi_address=billing';
-    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No redirect.' ); }
-    catch ( RedirectSignal $r ) { expect( $r->status === 303 && strpos( $r->url, '/address-book/' ) !== false && strpos( $r->url, 'ishi_address=billing' ) === false && strpos( $r->url, 'my-account' ) === false, 'Wrong success destination.' ); }
+test( 'ordinary POST is rejected before saving and never redirects', function () {
+    $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST';
+    Ishi_WooCommerce_Addresses::handle_request();
+    expect( $GLOBALS['writes'] === 0 && empty( $GLOBALS['redirects'] ) && empty( $GLOBALS['transients'] ), 'Normal POST saved or redirected.' );
+    $html = Ishi_WooCommerce_Addresses::render();
+    expect( strpos( $html, 'No changes were saved' ) !== false, 'Missing failure explanation.' );
+} );
+test( 'editor cannot submit natively before background script is ready', function () {
+    $_GET['ishi_address'] = 'billing'; $html = Ishi_WooCommerce_Addresses::render();
+    expect( strpos( $html, 'type="button" data-ishi-address-save' ) !== false && strpos( $html, 'data-ishi-address-ready disabled' ) !== false && strpos( $html, 'onsubmit="return false;"' ) !== false, 'Editor can submit natively.' );
 } );
 test( 'save handler runs before native form handlers and frontend routing', function () {
     $found = false;
