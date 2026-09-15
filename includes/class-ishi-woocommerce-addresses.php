@@ -27,6 +27,9 @@ final class Ishi_WooCommerce_Addresses {
     }
 
     public static function enqueue_if_present() {
+        // Page builders may store shortcodes outside post_content. Load the small
+        // independent event handler in the head, without waiting for WC scripts.
+        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.1', false );
         $post = get_post();
         if ( $post && has_shortcode( $post->post_content, self::SHORTCODE ) ) { self::assets(); }
     }
@@ -36,7 +39,7 @@ final class Ishi_WooCommerce_Addresses {
         // Same handles as WC_Shortcode_My_Account::edit_address(), without loading that controller.
         wp_enqueue_script( 'wc-country-select' );
         wp_enqueue_script( 'wc-address-i18n' );
-        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [ 'wc-country-select', 'wc-address-i18n' ], '1.2.0', true );
+        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.2.1', false );
         foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { wp_enqueue_style( $handle ); }
         }
@@ -133,7 +136,9 @@ final class Ishi_WooCommerce_Addresses {
             if ( $mode !== '' && ! self::valid_type( $mode ) ) {
                 return self::messages( [ __( 'Choose either Billing or Shipping to edit.', 'ishi-latepoint-profile' ) ] );
             }
-            $feedback = self::$response !== null ? self::messages( self::$response['errors'] ) : self::success_notice();
+            $feedback = self::$response !== null
+                ? ( self::$response['success'] ? self::messages( [ __( 'Address changed successfully.', 'woocommerce' ) ], true ) : self::messages( self::$response['errors'] ) )
+                : self::success_notice();
             self::assets();
             $ishi_address_template = true;
             ob_start();
@@ -350,16 +355,37 @@ final class Ishi_WooCommerce_Addresses {
     }
 
     public static function handle_request() {
+        $async = ( $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] ?? '' ) === '1';
+        if ( $async && ( $_SERVER['REQUEST_METHOD'] ?? '' ) === 'GET' ) {
+            self::send_async_response( null );
+            return;
+        }
         $post = get_post();
         if ( $post && has_shortcode( $post->post_content, self::SHORTCODE ) ) { self::no_cache(); }
         if ( ( $_SERVER['REQUEST_METHOD'] ?? '' ) !== 'POST' || ( $_POST['action'] ?? '' ) !== self::ACTION ) { return; }
         self::no_cache();
         self::$response = self::save_submission( $_POST );
+        if ( $async ) {
+            self::send_async_response( self::$response['success'] );
+            return;
+        }
         if ( ! self::$response['success'] ) { return; } // Same request renders the edit form with its entered values.
         $token = wp_generate_uuid4();
         set_transient( self::notice_key( $token ), true, 5 * MINUTE_IN_SECONDS );
         wp_safe_redirect( add_query_arg( 'ishi_address_notice', $token, self::base_url() ), 303 );
         exit;
+    }
+
+    /** JSON transport only changes presentation; save_submission remains the authority. */
+    private static function send_async_response( $saved ) {
+        self::no_cache();
+        if ( ! is_user_logged_in() || ! self::available() ) {
+            wp_send_json( [ 'ishi_addresses' => true, 'saved' => false, 'html' => '' ], 401 );
+            return;
+        }
+        self::$rendered = false;
+        $html = self::render();
+        wp_send_json( [ 'ishi_addresses' => true, 'saved' => $saved, 'html' => $html ] );
     }
 
     private static function notice_key( $token ) {

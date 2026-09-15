@@ -64,6 +64,11 @@ function wp_generate_uuid4() { return '11111111-1111-4111-8111-111111111111'; }
 function set_transient( $k, $v, $ttl ) { $GLOBALS['transients'][ $k ] = $v; return true; }
 function get_transient( $k ) { return $GLOBALS['transients'][ $k ] ?? false; }
 function delete_transient( $k ) { unset( $GLOBALS['transients'][ $k ] ); }
+class JsonSignal extends Exception {
+    public $data, $status;
+    public function __construct( $data, $status ) { $this->data = $data; $this->status = $status; }
+}
+function wp_send_json( $data, $status = 200 ) { throw new JsonSignal( $data, $status ); }
 class RedirectSignal extends Exception { public $url, $status; public function __construct( $url, $status ) { $this->url = $url; $this->status = $status; } }
 function wp_safe_redirect( $url, $status = 302 ) {
     $url = apply_filters( 'wp_redirect', $url, $status );
@@ -159,6 +164,7 @@ function reset_state() {
 }
 function fixture() {
     reset_state();
+    unset( $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] );
     $GLOBALS['redirects'] = []; $GLOBALS['interrupt_redirect'] = false;
     $GLOBALS['uid'] = 5; $GLOBALS['writes'] = 0; $GLOBALS['fail_save'] = false; $GLOBALS['silent_failure'] = false;
     foreach ( [ 'filters', 'actions', 'events', 'notices', 'scripts', 'transients' ] as $k ) { $GLOBALS[ $k ] = []; }
@@ -232,4 +238,30 @@ test( 'save callbacks are not intercepted by a redirect guard', function () {
     // This callback deliberately returns. A real callback that exits would end the request;
     // this test makes no claim to prevent that behavior.
 } );
-echo "All address adapter tests passed.\n";
+
+test( 'background success returns confirmed cards without redirect or notice token', function () {
+    $_POST = request_data(); $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
+    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
+    catch ( JsonSignal $r ) {
+        expect( $r->data['saved'] === true && strpos( $r->data['html'], 'woocommerce-Addresses' ) !== false, 'Missing confirmed cards.' );
+        expect( empty( $GLOBALS['redirects'] ) && empty( $GLOBALS['transients'] ), 'Background save used redirect notice flow.' );
+    }
+} );
+test( 'background validation error returns editor with submitted values', function () {
+    $_POST = request_data( 'billing', [ 'billing_city' => '', 'billing_first_name' => 'Retained' ] );
+    $_SERVER['REQUEST_METHOD'] = 'POST'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
+    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
+    catch ( JsonSignal $r ) { expect( $r->data['saved'] === false && strpos( $r->data['html'], 'value="Retained"' ) !== false && $GLOBALS['writes'] === 0, 'Validation did not retain editor.' ); }
+} );
+test( 'background edit uses authenticated current customer', function () {
+    $_GET['ishi_address'] = 'shipping'; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
+    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
+    catch ( JsonSignal $r ) { expect( $r->data['saved'] === null && strpos( $r->data['html'], 'name="shipping_country"' ) !== false && $GLOBALS['writes'] === 0, 'Incorrect editor response.' ); }
+} );
+test( 'anonymous background request cannot read address data', function () {
+    $GLOBALS['uid'] = 0; $_SERVER['HTTP_X_ISHI_ADDRESS_REQUEST'] = '1';
+    try { Ishi_WooCommerce_Addresses::handle_request(); throw new Exception( 'No JSON response.' ); }
+    catch ( JsonSignal $r ) { expect( $r->status === 401 && $r->data['html'] === '', 'Anonymous address disclosed.' ); }
+} );
+echo "All address adapter tests passed.\\n";
+

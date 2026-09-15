@@ -22,10 +22,13 @@
         try {
             const response = await fetch(url.href, {
                 method: form ? 'POST' : 'GET', body,
-                credentials: 'same-origin', cache: 'no-store', redirect: 'follow'
+                credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+                headers: { 'X-Ishi-Address-Request': '1', 'Accept': 'application/json' }
             });
             if (!response.ok || !samePage(new URL(response.url))) throw new Error('Unexpected response');
-            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const result = await response.json();
+            if (result.ishi_addresses !== true || typeof result.html !== 'string') throw new Error('Invalid response');
+            const doc = new DOMParser().parseFromString(result.html, 'text/html');
             const matches = doc.querySelectorAll(selector);
             if (matches.length !== 1) throw new Error('Address interface missing');
             const next = matches[0];
@@ -33,7 +36,7 @@
             const cards = next.querySelector('.woocommerce-Addresses');
             if (!editor && !cards) throw new Error('Address view missing');
             // A POST may show cards only after our server's confirmed-success redirect.
-            if (form && cards && (!response.redirected || !new URL(response.url).searchParams.has('ishi_address_notice'))) {
+            if (form && cards && result.saved !== true) {
                 throw new Error('Save confirmation missing');
             }
             // Do not execute scripts from the fetched full page or replace any parent widgets.
@@ -62,22 +65,23 @@
         }
     }
 
-    document.addEventListener('click', function (event) {
+    window.addEventListener('click', function (event) {
         const link = event.target.closest('a[data-ishi-address-edit]');
         if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
         const root = link.closest(selector);
         const url = new URL(link.href);
         if (!root || !samePage(url)) return;
         event.preventDefault();
+        event.stopImmediatePropagation();
         navigate(root, url);
-    });
-    document.addEventListener('submit', function (event) {
+    }, true);
+    window.addEventListener('submit', function (event) {
         const form = event.target;
         if (!form.matches('form[data-ishi-address-form]')) return;
         const root = form.closest(selector);
         const url = new URL(form.action);
-        if (!root || !samePage(url) || event.defaultPrevented) return;
+        if (!root || !samePage(url)) return;
         event.preventDefault();
         navigate(root, url, form, event.submitter);
-    });
+    }, true);
 }());

@@ -14,7 +14,7 @@ function setup(inner = cards) {
     return w;
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 20));
-function response(inner, saving = false) { return { ok: true, redirected: saving, url: 'https://example.test/dashboard/' + (saving ? '?ishi_address_notice=token' : '?ishi_address=billing'), text: async () => html(inner) }; }
+function response(inner, saving = false) { return { ok: true, redirected: saving, url: 'https://example.test/dashboard/' + (saving ? '?ishi_address_notice=token' : '?ishi_address=billing'), json: async () => ({ ishi_addresses: true, saved: saving, html: html(inner) }) }; }
 function submit(w) { w.document.querySelector('form').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true })); }
 test('edit and confirmed save replace only shortcode contents inside an open container', async () => {
     const w = setup(); const parent = w.document.querySelector('#third'); const root = parent.firstChild; const originalURL = w.location.href;
@@ -51,4 +51,24 @@ test('cards without a confirmed redirect are not treated as a successful save', 
 test('fetched page scripts are not inserted', async () => {
     const w = setup(); w.fetch = async () => response(editor + '<script>window.unwanted = true;</script>');
     w.document.querySelector('a').click(); await tick(); assert.equal(w.document.querySelector('script'), null); assert.equal(w.unwanted, undefined); w.close();
+});
+
+test('capture handler handles submit before parent handlers stop propagation', async () => {
+    const w = setup(editor); let requests = 0;
+    w.document.querySelector('#third').addEventListener('submit', event => { event.stopPropagation(); });
+    w.fetch = async (url, options) => {
+        requests++;
+        assert.equal(options.headers['X-Ishi-Address-Request'], '1');
+        assert.equal(options.redirect, 'error');
+        return response(cards, true);
+    };
+    const event = new w.Event('submit', { bubbles: true, cancelable: true });
+    w.document.querySelector('form').dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    await tick(); assert.equal(requests, 1); assert.ok(w.document.querySelector('.woocommerce-Addresses')); w.close();
+});
+test('HTML instead of JSON never falls back to a normal form submission', async () => {
+    const w = setup(editor); let calls = 0;
+    w.fetch = async () => { calls++; return { ok: true, url: w.location.href, json: async () => { throw Error('HTML'); } }; };
+    submit(w); await tick(); assert.equal(calls, 1); assert.ok(w.document.querySelector('form')); assert.ok(w.document.querySelector('[role="alert"]')); w.close();
 });

@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.2.0
+# Ishi LatePoint Profile 1.2.1
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -32,12 +32,14 @@ Source audit: WooCommerce **11.0.1** from the supplied site backup, not a live i
 
 Before live use, verify billing and shipping saves, country/state changes, validation failures, theme appearance, and any installed address-field extensions on staging.
 
-## In-place address navigation (1.2.0)
+## In-place address navigation (1.2.1)
 
-Edit links and submissions are progressively enhanced with background requests to the existing same-page URLs. The server still validates, saves through WC_Customer, rereads the result, runs save hooks and confirms it again. Successful POSTs still issue the normal 303 redirect; fetch follows it without navigating the browser. Only the contents of .ishi-customer-addresses are replaced from the returned page. The parent tab, accordion, DOM nodes, URL hash and history are untouched. This is not a redirect guard.
+The navigation script loads in the document head without WooCommerce dependencies, including on pages whose builder stores the shortcode outside post_content. A capture-phase listener handles this shortcode's Edit and Save events before parent widgets can stop their propagation.
 
-Validation failures return the editor and entered values. Network failures, missing forms, unexpected destinations and unconfirmed display responses retain the current interface with an error; POSTs are never automatically retried. Without JavaScript, the existing full-page links and POST/redirect workflow still work, though parent widget state may reset.
+Background requests send X-Ishi-Address-Request: 1 to the same page. GET renders the authenticated customer's selected editor. POST uses the existing nonce, ownership checks, validation, WC_Customer save, hooks and read-back verification. After that result, PHP returns JSON containing the rendered cards on success or editor/errors on failure. Background saves do not generate ishi_address_notice tokens or redirects. The header selects transport, not authorization; all save security checks still apply.
 
-The normal WordPress frontend lifecycle renders the response page on the server, but its surrounding markup and scripts are not installed in the browser. One server-rendered shortcode per page remains supported. Native WooCommerce country/state controls refresh after replacement. Custom field widgets requiring initialization can listen for the bubbling ishi:addresses-updated event on the shortcode; fetched inline scripts are not executed. No Elementor/tab-specific integration is used.
+Only the shortcode's children are replaced. Parent nodes, tabs, accordions, URL and history remain untouched. Unexpected redirects are rejected by fetch, not intercepted through a PHP redirect filter. Network/response failures retain entered values and are never automatically retried. Custom field widgets can listen for ishi:addresses-updated; fetched inline scripts are not executed. Native country/state controls are refreshed if their scripts are available.
 
-Navigation tests use jsdom to check container preservation, successful transitions, validation, failures, duplicate submissions and unexpected redirects. They complement PHP adapter tests; a real theme/browser check remains appropriate for custom field widgets.
+The original page-based fallback remains for JavaScript-disabled browsers. Its successful-save handler creates a session-bound transient token, places it in ishi_address_notice, and sends a 303 redirect. The following GET consumes the token to show success and renders cards. This reload is for feedback/navigation, not persistence, and is not used by the enhanced flow.
+
+If the browser address bar reaches ishi_address_notice after saving with JavaScript enabled, the navigation script was not active for that submission. Check that assets/address-navigation.js?ver=1.2.1 is served, and clear or exclude it from script-delay/page-cache rules. The live site's script delivery was not inspected in this development environment. Tests cover background success/failure/authentication, container preservation and a parent stopping submit propagation; real site/theme integration still needs verification.
