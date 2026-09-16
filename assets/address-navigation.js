@@ -68,6 +68,16 @@
                     console.warn('Ishi address select enhancement unavailable.', error);
                 }
             }
+            if (editor && window.jQuery && window.QWERY_STORAGE) {
+                try {
+                    // Qwery's normal fragment initializer decorates raw selects,
+                    // including WC's single-country variant skipped by SelectWoo.
+                    // Pass only this shortcode: never reinitialize the parent panel.
+                    window.jQuery(document).trigger('action.init_hidden_elements', [window.jQuery(root)]);
+                } catch (error) {
+                    console.warn('Ishi address theme initialization unavailable.', error);
+                }
+            }
             root.dispatchEvent(new CustomEvent('ishi:addresses-updated', { bubbles: true }));
             const focus = root.querySelector('[role="alert"], [role="status"], h2');
             if (focus) { focus.setAttribute('tabindex', '-1'); focus.focus({ preventScroll: true }); }

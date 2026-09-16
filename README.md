@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.4
+# Ishi LatePoint Profile 1.3.5
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -58,3 +58,7 @@ Removed only the country/state visibility override. SelectWoo assets, native ref
 ## 1.3.4
 
 Removed custom Edit-button typography, colors, hover/focus styling, breakpoint, clearing pseudo-element, and the address fieldset's inline presentation reset. Only account content width: 100% and float: none remain as plugin CSS overrides. Existing WooCommerce/Qwery stylesheets and styling wrappers remain. No change to select initialization, request handling or no-navigation behavior; theme rules requiring different markup are not recreated by custom CSS.
+
+## 1.3.5
+
+After inserting an address editor and refreshing WooCommerce country/state controls, notify Qwery through its action.init_hidden_elements event with only the shortcode root. This lets Qwery decorate the single-country select using its own wrapper and CSS. The parent panel is not passed to the initializer. No visibility override or other CSS was added; confirmed saving remains independent of theme initialization errors.
