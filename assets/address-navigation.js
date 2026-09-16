@@ -63,6 +63,16 @@
             // Enable the new editor before WooCommerce enhances its selects.
             // enable() is intentionally blocked while this request is busy.
             root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
+            if (editor && window.jQuery && window.QWERY_STORAGE) {
+                try {
+                    // Qwery's normal fragment initializer decorates raw selects,
+                    // before SelectWoo enhances them and makes Qwery skip them.
+                    // Pass only this shortcode: never reinitialize the parent panel.
+                    window.jQuery(document).trigger('action.init_hidden_elements', [window.jQuery(root)]);
+                } catch (error) {
+                    console.warn('Ishi address theme initialization unavailable.', error);
+                }
+            }
             if (window.jQuery) {
                 try {
                     // WC refresh rebuilds states and fires country_to_state_changed,
@@ -72,16 +82,6 @@
                     // Presentation enhancement must not turn a confirmed save into
                     // a save error. Select visibility remains controlled by the theme.
                     console.warn('Ishi address select enhancement unavailable.', error);
-                }
-            }
-            if (editor && window.jQuery && window.QWERY_STORAGE) {
-                try {
-                    // Qwery's normal fragment initializer decorates raw selects,
-                    // including WC's single-country variant skipped by SelectWoo.
-                    // Pass only this shortcode: never reinitialize the parent panel.
-                    window.jQuery(document).trigger('action.init_hidden_elements', [window.jQuery(root)]);
-                } catch (error) {
-                    console.warn('Ishi address theme initialization unavailable.', error);
                 }
             }
             root.dispatchEvent(new CustomEvent('ishi:addresses-updated', { bubbles: true }));
