@@ -1,5 +1,36 @@
-/* The only plugin presentation override: standalone content has no account sidebar. */
+/* Standalone account layout: standalone content has no account sidebar. */
 .ishi-theme-account.woocommerce-account > .woocommerce-MyAccount-content {
     float: none;
     width: 100%;
+}
+
+/* Edit actions retain button semantics while matching Qwery's native Edit links. */
+.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit] {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    min-height: 0;
+    color: var(--theme-color-text_link, inherit);
+    font-family: var(--theme-font-h5_font-family, inherit);
+    font-size: 1em;
+    font-weight: 400;
+    line-height: 1.3em;
+    letter-spacing: normal;
+    text-transform: none;
+    cursor: pointer;
+}
+.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:hover {
+    background: none;
+    color: var(--theme-color-text_hover, inherit);
+}
+.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+@media (max-width: 767px) {
+    .ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit] {
+        font-size: 15px;
+    }
 }

@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.5
+# Ishi LatePoint Profile 1.3.6
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -43,7 +43,7 @@ The WooCommerce source audit used 11.0.1 from the supplied backup. See docs/wooc
 
 Both shortcodes expose scoped `.woocommerce`, `.woocommerce-page`, `.woocommerce-account` and `.woocommerce-MyAccount-content` wrappers. Qwery's existing WooCommerce styles and responsive styles are loaded through its CSS loader, retaining its active skin/child-theme file resolution. Already-enqueued theme/child-theme overrides participate in the normal CSS cascade. Templates remain bundled inside this plugin.
 
-The compatibility stylesheet only removes Qwery's sidebar width reservation inside the standalone wrappers (width: 100%; float: none). Edit controls remain non-navigating buttons and receive the styles WooCommerce/Qwery apply to their markup. Address column widths and breakpoints come from the theme, not a duplicate plugin grid. No account body classes, endpoint routing, account JavaScript, REST saving logic, or address navigation behavior were added or changed.
+The compatibility stylesheet removes Qwery's sidebar width reservation (width: 100%; float: none) and, as of 1.3.6, applies an explicitly approved, narrowly scoped Edit-button adaptation to match Qwery's native Edit links. Buttons keep their non-navigation semantics and a visible keyboard focus indicator. Address column widths and breakpoints come from the theme, not a duplicate plugin grid. No account body classes, endpoint routing, account JavaScript, REST saving logic, or address navigation behavior were added or changed.
 
 This activates theme selectors that match the scoped markup; it cannot automatically reproduce arbitrary rules requiring `body.woocommerce-account`, a particular page ID, navigation sibling, or different template markup. Those require a separately verified, scoped adaptation rather than changing the surrounding page. Theme template PHP overrides are not loaded. Without Qwery, registered WooCommerce styles remain available.
 
@@ -62,3 +62,7 @@ Removed custom Edit-button typography, colors, hover/focus styling, breakpoint, 
 ## 1.3.5
 
 After inserting an address editor and refreshing WooCommerce country/state controls, notify Qwery through its action.init_hidden_elements event with only the shortcode root. This lets Qwery decorate the single-country select using its own wrapper and CSS. The parent panel is not passed to the initializer. No visibility override or other CSS was added; confirmed saving remains independent of theme initialization errors.
+
+## 1.3.6
+
+Adapt only the address-card Edit buttons to Qwery's Edit-link appearance using its configured font and color variables and corresponding responsive typography. Save buttons, select visibility, fieldsets, Qwery initialization, and the REST interaction are unchanged. No clearing pseudo-element or select visibility override is restored.
