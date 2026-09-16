@@ -7,7 +7,7 @@ const fs = require('node:fs');
         const page = await browser.newPage();
         const wrap = inner => '<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce"><div class="woocommerce-MyAccount-content">' + inner + '</div></div>';
         const cards = wrap('<div class="woocommerce-Addresses">Updated address' + ['billing','shipping'].map(type => '<button disabled type="button" data-ishi-address-control data-ishi-address-edit data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '">Edit ' + type + '</button>').join('') + '</div>');
-        const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button></fieldset></form>');
+        const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><div class="woocommerce-address-fields"><select class="country_select" name="country"><option selected value="PH">Philippines</option></select><select class="state_select" name="state"><option selected value="00">Metro Manila</option></select></div><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button></fieldset></form>');
         let documents = 0, posts = 0;
         await page.route('https://example.test/**', async route => {
             const req = route.request();
@@ -23,9 +23,16 @@ const fs = require('node:fs');
         });
         await page.goto('https://example.test/dashboard/#third');
         await page.addScriptTag({ content: fs.readFileSync(require('node:path').join(__dirname, '../assets/address-navigation.js'), 'utf8') });
+        await page.addStyleTag({ content: 'select:not(.esg-sorting-select):not([class*="trx_addons_attrib_"]){visibility:hidden}' });
+        await page.addStyleTag({ content: fs.readFileSync(require('node:path').join(__dirname, '../assets/theme-compatibility.css'), 'utf8') });
         for (const type of ['billing','shipping']) {
             await page.getByRole('button', { name: 'Edit ' + type }).click();
             await page.locator('form').waitFor();
+            for (const [cls, value] of [['country_select', 'PH'], ['state_select', '00']]) {
+                const select = page.locator('select.' + cls);
+                assert.equal(await select.inputValue(), value);
+                assert.equal(await select.evaluate(el => getComputedStyle(el).visibility), 'visible');
+            }
             assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
             await page.getByRole('button', { name: 'Save changes' }).click();
             await page.locator('.woocommerce-Addresses').waitFor();

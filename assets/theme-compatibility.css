@@ -40,3 +40,11 @@
         font-size: 15px;
     }
 }
+
+/* Qwery hides raw selects until its page initializer wraps them. REST editors
+   arrive later. Keep the native fallback usable; never reveal SelectWoo's
+   deliberately hidden original or a locale-hidden state row. */
+.ishi-customer-addresses .woocommerce-address-fields select.country_select:not(.select2-hidden-accessible),
+.ishi-customer-addresses .woocommerce-address-fields select.state_select:not(.select2-hidden-accessible) {
+    visibility: visible;
+}

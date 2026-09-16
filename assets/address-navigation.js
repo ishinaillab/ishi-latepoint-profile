@@ -54,9 +54,19 @@
             next.querySelectorAll('script').forEach(node => node.remove());
             root.setAttribute('data-ishi-rest-nonce', next.getAttribute('data-ishi-rest-nonce') || root.getAttribute('data-ishi-rest-nonce'));
             root.replaceChildren(...Array.from(next.childNodes));
-            enable(root);
+            // Enable the new editor before WooCommerce enhances its selects.
+            // enable() is intentionally blocked while this request is busy.
+            root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
             if (window.jQuery) {
-                window.jQuery(root).find('#billing_country, #shipping_country').trigger('refresh');
+                try {
+                    // WC refresh rebuilds states and fires country_to_state_changed,
+                    // which initializes SelectWoo using WC's labels and configuration.
+                    window.jQuery(root).find('#billing_country, #shipping_country').trigger('refresh');
+                } catch (error) {
+                    // Presentation enhancement must not turn a confirmed save into
+                    // a save error. Scoped CSS keeps native selects usable.
+                    console.warn('Ishi address select enhancement unavailable.', error);
+                }
             }
             root.dispatchEvent(new CustomEvent('ishi:addresses-updated', { bubbles: true }));
             const focus = root.querySelector('[role="alert"], [role="status"], h2');

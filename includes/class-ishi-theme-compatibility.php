@@ -12,7 +12,7 @@ final class Ishi_Theme_Compatibility {
 
     public static function enqueue() {
         $dependencies = [];
-        foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ] as $handle ) {
+        foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen', 'select2' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) {
                 wp_enqueue_style( $handle );
                 $dependencies[] = $handle;
@@ -29,7 +29,7 @@ final class Ishi_Theme_Compatibility {
         foreach ( [ 'qwery-woocommerce', 'qwery-woocommerce-responsive' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { $dependencies[] = $handle; }
         }
-        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, '1.3.1' );
+        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, '1.3.2' );
     }
 
     public static function render_styles() {
