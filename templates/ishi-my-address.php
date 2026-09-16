@@ -16,7 +16,7 @@ if ( empty( $ishi_address_template ) || ! isset( $get_addresses, $customer_id ) 
         <div class="u-column<?php echo esc_attr( $column ); ?> col-<?php echo esc_attr( $column ); ?> woocommerce-Address">
             <header class="woocommerce-Address-title title">
                 <h2><?php echo esc_html( $address_title ); ?></h2>
-                <button type="button" disabled data-ishi-address-control data-ishi-address-url="<?php echo esc_url( Ishi_WooCommerce_Addresses::endpoint( $name ) ); ?>" class="edit" data-ishi-address-edit style="background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">
+                <button type="button" disabled data-ishi-address-control data-ishi-address-url="<?php echo esc_url( Ishi_WooCommerce_Addresses::endpoint( $name ) ); ?>" class="edit" data-ishi-address-edit>
                     <?php printf( $address ? esc_html__( 'Edit %s', 'woocommerce' ) : esc_html__( 'Add %s', 'woocommerce' ), esc_html( $address_title ) ); ?>
                 </button>
             </header>

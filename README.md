@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.0
+# Ishi LatePoint Profile 1.3.1
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -38,3 +38,11 @@ No-JavaScript mode cannot edit or save; it shows an unavailable explanation. Old
 PHP adapter tests cover permissions, type isolation, nonces, validation, persistence and slashing. DOM tests cover background responses and failures. Chromium checks the complete Billing and Shipping Edit/Save loops and asserts only one document request with the parent container remaining open. These are automated fixtures, not a claim that every live theme or extension has been tested.
 
 The WooCommerce source audit used 11.0.1 from the supplied backup. See docs/woocommerce-address-audit.md for native behavior. Test the upgrade on the actual site, including any address-field extensions and REST/security/cache plugins.
+
+## Theme presentation (1.3.1)
+
+Both shortcodes expose scoped `.woocommerce`, `.woocommerce-page`, `.woocommerce-account` and `.woocommerce-MyAccount-content` wrappers. Qwery's existing WooCommerce styles and responsive styles are loaded through its CSS loader, retaining its active skin/child-theme file resolution. Already-enqueued theme/child-theme overrides participate in the normal CSS cascade. Templates remain bundled inside this plugin.
+
+The small compatibility stylesheet removes Qwery's sidebar width reservation inside the standalone wrappers and adapts native Edit-link presentation to non-navigating buttons. Address column widths and breakpoints come from the theme, not a duplicate plugin grid. No account body classes, endpoint routing, account JavaScript, REST saving logic, or address navigation behavior were added or changed.
+
+This activates theme selectors that match the scoped markup; it cannot automatically reproduce arbitrary rules requiring `body.woocommerce-account`, a particular page ID, navigation sibling, or different template markup. Those require a separately verified, scoped adaptation rather than changing the surrounding page. Theme template PHP overrides are not loaded. Without Qwery, registered WooCommerce styles remain available.

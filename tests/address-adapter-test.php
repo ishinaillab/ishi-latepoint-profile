@@ -80,6 +80,7 @@ function select_view( $type ) {
 function wp_enqueue_script( $h ) { $GLOBALS['scripts'][] = $h; }
 function wp_style_is( ...$a ) { return false; }
 function wp_enqueue_style( $h ) {}
+function wp_print_styles( $handles ) {}
 function wc_wp_theme_get_element_class_name( $n ) { return 'wp-element-button'; }
 function woocommerce_form_field( $key, $field, $value ) { echo '<input name="' . esc_attr( $key ) . '" value="' . esc_attr( $value ) . '">'; }
 function wc_get_account_formatted_address( $type, $id ) { return esc_html( $GLOBALS['db'][ $id ][ $type ]['first_name'] ?? '' ); }

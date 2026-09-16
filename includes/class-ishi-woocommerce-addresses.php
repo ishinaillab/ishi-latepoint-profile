@@ -1,6 +1,7 @@
 <?php
 /** Standalone address controller. Native behavior audited against the supplied WooCommerce 11.0.1 source. */
 defined( 'ABSPATH' ) || exit;
+require_once __DIR__ . '/class-ishi-theme-compatibility.php';
 
 final class Ishi_WooCommerce_Addresses {
     const SHORTCODE = 'ishi_customer_addresses';
@@ -139,7 +140,8 @@ final class Ishi_WooCommerce_Addresses {
             self::assets();
             $ishi_address_template = true;
             ob_start();
-            echo '<div class="woocommerce ishi-customer-addresses" data-ishi-rest-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">' . $feedback;
+            Ishi_Theme_Compatibility::render_styles();
+            echo '<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-customer-addresses" data-ishi-rest-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '"><div class="woocommerce-MyAccount-content">' . $feedback;
             if ( $mode === '' ) {
                 $customer_id = $customer->get_id();
                 // Both cards are intentional, even if checkout ships to billing only.
@@ -171,7 +173,7 @@ final class Ishi_WooCommerce_Addresses {
                 $revision = self::revision( $customer, $mode );
                 include self::template( 'ishi-form-edit-address.php' );
             }
-            echo '</div>';
+            echo '</div></div>';
             return ob_get_clean();
         } catch ( Throwable $e ) {
             while ( ob_get_level() > $level ) { ob_end_clean(); }

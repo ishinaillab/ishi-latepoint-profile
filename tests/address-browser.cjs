@@ -5,7 +5,7 @@ const fs = require('node:fs');
     const browser = await chromium.launch();
     try {
         const page = await browser.newPage();
-        const wrap = inner => '<div class="ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce">' + inner + '</div>';
+        const wrap = inner => '<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce"><div class="woocommerce-MyAccount-content">' + inner + '</div></div>';
         const cards = wrap('<div class="woocommerce-Addresses">Updated address' + ['billing','shipping'].map(type => '<button disabled type="button" data-ishi-address-control data-ishi-address-edit data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '">Edit ' + type + '</button>').join('') + '</div>');
         const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button></fieldset></form>');
         let documents = 0, posts = 0;

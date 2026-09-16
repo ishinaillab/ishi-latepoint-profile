@@ -15,7 +15,9 @@ $required_marker = static function ( $field ) use ( $field_required ) {
 };
 $button_class = function_exists( 'wp_theme_get_element_class_name' ) ? wp_theme_get_element_class_name( 'button' ) : '';
 ?>
-<div class="woocommerce ishi-profile-shortcode">
+<?php Ishi_Theme_Compatibility::render_styles(); ?>
+<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-profile-shortcode">
+<div class="woocommerce-MyAccount-content">
     <?php echo Ishi_LatePoint_Profile::notice_html( $notice ); ?>
 
     <form id="<?php echo esc_attr( $form_id ); ?>" class="woocommerce-EditAccountForm edit-account ishi-edit-account-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
@@ -72,4 +74,5 @@ $button_class = function_exists( 'wp_theme_get_element_class_name' ) ? wp_theme_
             <input type="hidden" name="ishi_lp_return" value="<?php echo esc_url( $return_url ); ?>" />
         </p>
     </form>
+</div>
 </div>
