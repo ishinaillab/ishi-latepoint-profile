@@ -1,10 +1,4 @@
-# Ishi LatePoint Profile 1.4.1
-
-## 1.4.1 — Address heading alignment
-
-The initial address cards use the shared opt-in `ishi-ui-card-grid` layout. CSS subgrid aligns heading, Edit-control and body rows while allowing natural text wrapping. Auto-fit columns use the component's available width, a minimum of 18em per card (capped at 100%), and the existing 4% column gap. Narrow containers stack the cards; browsers without subgrid support receive a single-column fallback. Qwery's typography, colors and margins remain in effect. No fixed heading heights, nowrap, text shrinking, navigation or save-handler changes.
-
-The native 48% floats allowed Shipping to wrap independently of Billing. The scoped grid replaces those floats only within the opt-in card group. Extension output stays inside each card body. Tests cover unequal heading heights, narrow containers on wide pages, long labels and enlarged text, plus existing save-flow regression checks.
+# Ishi LatePoint Profile 1.4.0
 
 ## 1.4.0 — Shared shortcode runtime
 

@@ -78,7 +78,3 @@ browser will fail safely in place and will not automatically repeat an uncertain
 Replace the entire plugin and clear cached plugin scripts/styles. Old Profile admin-post forms
 are rejected without writes or redirects. Both current shortcodes use background REST saves;
 legacy ishi_lp_notice and address notice-token navigation are not used.
-
-## Optional shared card layout (1.4.1)
-
-For paired summary cards, use .ishi-ui-card-grid around .ishi-ui-card items. Each item contains .ishi-ui-card-header with heading and Edit control, followed by .ishi-ui-card-body containing its remaining content and extension output. The grid shares three content-sized rows, allows wrapping, and stacks based on available container width. This opt-in layout is available to future shortcodes; ordinary forms keep their current layout.

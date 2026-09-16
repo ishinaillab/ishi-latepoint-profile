@@ -26,4 +26,3 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/address-browser.cjs
           node tests/profile-browser.cjs
-          node tests/address-layout.cjs
