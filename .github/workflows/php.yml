@@ -12,16 +12,17 @@ jobs:
       - name: Check PHP syntax
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n 1 php -l
       - name: Test address adapter
-        run: php tests/address-adapter-test.php
+        run: php tests/profile-adapter-test.php
 
       - name: Test in-place address navigation
         run: |
           npm install --no-save --package-lock=false --ignore-scripts jsdom@26.1.0 jquery@3.7.1
-          node --check assets/address-navigation.js
-          node --test tests/address-navigation.test.cjs tests/dropdown-scheme.test.cjs
+          node --check assets/shortcode-ui.js
+          node --test tests/address-navigation.test.cjs tests/dropdown-scheme.test.cjs tests/shortcode-ui.test.cjs
 
       - name: Test address form in Chromium
         run: |
           npm install --no-save --package-lock=false --ignore-scripts playwright@1.51.1
           npx playwright install --with-deps chromium
           node tests/address-browser.cjs
+          node tests/profile-browser.cjs

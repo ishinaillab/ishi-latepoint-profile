@@ -1,6 +1,7 @@
 <?php
 /** Standalone address controller. Native behavior audited against the supplied WooCommerce 11.0.1 source. */
 defined( 'ABSPATH' ) || exit;
+require_once __DIR__ . '/class-ishi-shortcode-ui.php';
 require_once __DIR__ . '/class-ishi-theme-compatibility.php';
 
 final class Ishi_WooCommerce_Addresses {
@@ -12,7 +13,7 @@ final class Ishi_WooCommerce_Addresses {
     private static $rendered = false;
 
     public static function boot() {
-        add_shortcode( self::SHORTCODE, [ __CLASS__, 'render' ] );
+        Ishi_Shortcode_UI::register( self::SHORTCODE, [ __CLASS__, 'render' ] );
         // Process before WooCommerce form handlers and frontend routing redirects.
         add_action( 'wp_loaded', [ __CLASS__, 'handle_request' ], 5 );
         add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
@@ -32,7 +33,7 @@ final class Ishi_WooCommerce_Addresses {
     public static function enqueue_if_present() {
         // Page builders may store shortcodes outside post_content. Load the small
         // independent event handler in the head, without waiting for WC scripts.
-        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.3.11', false );
+        Ishi_Shortcode_UI::enqueue();
         $post = get_post();
         if ( $post && has_shortcode( $post->post_content, self::SHORTCODE ) ) { self::assets(); }
     }
@@ -45,7 +46,7 @@ final class Ishi_WooCommerce_Addresses {
         wp_enqueue_style( 'select2' );
         wp_enqueue_script( 'wc-country-select' );
         wp_enqueue_script( 'wc-address-i18n' );
-        wp_enqueue_script( 'ishi-address-navigation', plugins_url( 'assets/address-navigation.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [], '1.3.11', false );
+        Ishi_Shortcode_UI::enqueue();
         foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { wp_enqueue_style( $handle ); }
         }
@@ -144,7 +145,7 @@ final class Ishi_WooCommerce_Addresses {
             $ishi_address_template = true;
             ob_start();
             Ishi_Theme_Compatibility::render_styles();
-            echo '<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-customer-addresses" data-ishi-rest-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '"><div class="woocommerce-MyAccount-content">' . $feedback;
+            echo '<div ' . Ishi_Shortcode_UI::root_attributes( 'addresses', 'ishi-customer-addresses' ) . '><div class="woocommerce-MyAccount-content">' . $feedback;
             if ( $mode === '' ) {
                 $customer_id = $customer->get_id();
                 // Both cards are intentional, even if checkout ships to billing only.
@@ -377,14 +378,8 @@ final class Ishi_WooCommerce_Addresses {
     }
 
     public static function rest_permission( $request ) {
-        self::no_cache();
-        if ( ! is_user_logged_in() || get_current_user_id() <= 0 ) {
-            return new WP_Error( 'ishi_auth', __( 'Please sign in to manage your addresses.', 'ishi-latepoint-profile' ), [ 'status' => 401 ] );
-        }
-        // Cookie-authenticated frontend only. A nonce is not a customer ID or authorization grant.
-        if ( ! wp_verify_nonce( $request->get_header( 'X-WP-Nonce' ), 'wp_rest' ) ) {
-            return new WP_Error( 'ishi_nonce', __( 'Your session has expired. Refresh before saving.', 'ishi-latepoint-profile' ), [ 'status' => 403 ] );
-        }
+        $permission = Ishi_Shortcode_UI::permission( $request );
+        if ( $permission !== true ) { return $permission; }
         if ( ! self::available() ) {
             return new WP_Error( 'ishi_unavailable', __( 'WooCommerce address management is unavailable.', 'ishi-latepoint-profile' ), [ 'status' => 503 ] );
         }
@@ -435,13 +430,8 @@ final class Ishi_WooCommerce_Addresses {
     private static function rest_view( $saved ) {
         self::$rendered = false;
         $html = self::render();
-        $response = new WP_REST_Response( [
-            'ishi_addresses' => true, 'saved' => $saved,
-            'view' => self::$response !== null ? self::$response['type'] : self::$view,
-            'html' => $html,
-        ], $saved === false ? 422 : 200 );
-        $response->header( 'Cache-Control', 'private, no-store, max-age=0' );
-        return $response;
+        return Ishi_Shortcode_UI::response( 'addresses', $html, $saved,
+            self::$response !== null ? self::$response['type'] : self::$view, [ 'ishi_addresses' => true ] );
     }
 }
 

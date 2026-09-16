@@ -1,6 +1,7 @@
 <?php
 /** Presentation context for the standalone shortcodes; never enables account routing. */
 defined( 'ABSPATH' ) || exit;
+require_once __DIR__ . '/class-ishi-shortcode-ui.php';
 
 final class Ishi_Theme_Compatibility {
     public static function enqueue_dropdown_scheme() {
@@ -22,7 +23,7 @@ final class Ishi_Theme_Compatibility {
 
     public static function enqueue_if_present() {
         $post = get_post();
-        if ( $post && ( has_shortcode( $post->post_content, 'ishi_customer_addresses' ) || has_shortcode( $post->post_content, 'ishi_latepoint_profile' ) ) ) {
+        if ( $post && Ishi_Shortcode_UI::present( $post->post_content ) ) {
             self::enqueue();
         }
     }
@@ -46,7 +47,7 @@ final class Ishi_Theme_Compatibility {
         foreach ( [ 'qwery-woocommerce', 'qwery-woocommerce-responsive' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { $dependencies[] = $handle; }
         }
-        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, '1.3.7' );
+        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, Ishi_Shortcode_UI::VERSION );
     }
 
     public static function render_styles() {

@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Ishi LatePoint Profile
- * Description: Independent customer profile shortcode using the child theme's existing form design.
- * Version: 1.3.13
+ * Description: Independent customer profile shortcode with shared, in-place account interfaces.
+ * Version: 1.4.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: ishi-latepoint-profile
@@ -12,6 +12,8 @@ defined( 'ABSPATH' ) || exit;
 
 final class Ishi_LatePoint_Profile {
     private static $render_count = 0;
+    private static $response = null;
+    private static $values = [];
     const ACTION = 'ishi_lp_save_profile';
     const SHORTCODE = 'ishi_latepoint_profile';
     const TEMPLATE = '/templates/ishi-form-edit-account.php';
@@ -23,7 +25,8 @@ final class Ishi_LatePoint_Profile {
     ];
 
     public static function boot() {
-        add_shortcode( self::SHORTCODE, [ __CLASS__, 'render' ] );
+        Ishi_Shortcode_UI::register( self::SHORTCODE, [ __CLASS__, 'render' ] );
+        add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
         add_action( 'admin_post_' . self::ACTION, [ __CLASS__, 'handle_post' ] );
         add_action( 'admin_post_nopriv_' . self::ACTION, [ __CLASS__, 'handle_post' ] );
         add_action( 'template_redirect', [ __CLASS__, 'protect_shortcode_page' ] );
@@ -134,8 +137,13 @@ final class Ishi_LatePoint_Profile {
             if ( ! is_readable( $template ) ) {
                 return self::notice_html( [ 'success' => false, 'messages' => [ __( 'The profile form is unavailable. Please contact support.', 'ishi-latepoint-profile' ) ] ] );
             }
-            $customer = $context['customer'];
-            $user = $context['user'];
+            $customer = clone $context['customer'];
+            $user = clone $context['user'];
+            // Retain only non-secret, presentation values after pre-write validation errors.
+            foreach ( self::FIELD_MAP as $input => $property ) {
+                if ( isset( self::$values[ $input ] ) ) { $customer->$property = self::$values[ $input ]; }
+            }
+            if ( isset( self::$values['account_display_name'] ) ) { $user->display_name = self::$values['account_display_name']; }
             $required_fields = OsSettingsHelper::get_default_fields_for_customer();
             $field_required = static function ( $name ) use ( $required_fields, $context ) {
                 return ( $name === 'email' && $context['wp_auth'] ) ||
@@ -143,8 +151,7 @@ final class Ishi_LatePoint_Profile {
             };
             $form_id = wp_unique_id( 'ishi-profile-' );
             $id_suffix = ++self::$render_count === 1 ? '' : '-' . $form_id;
-            $return_url = self::return_url();
-            $notice = self::consume_notice();
+            $notice = self::$response;
             // Styling only. No WooCommerce PHP API, form hook, route or customer object is used.
             foreach ( [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ] as $handle ) {
                 if ( wp_style_is( $handle, 'registered' ) ) {
@@ -185,7 +192,7 @@ final class Ishi_LatePoint_Profile {
         if ( $partial ) {
             array_unshift( $messages, __( 'Not all changes were saved. Some changes may already have been applied. The form now shows the stored values; review them before trying again.', 'ishi-latepoint-profile' ) );
         }
-        return [ 'success' => $success, 'messages' => $messages ];
+        return [ 'success' => $success, 'messages' => $messages, 'partial' => $partial ];
     }
 
     private static function refresh_user( $id ) {
@@ -222,7 +229,7 @@ final class Ishi_LatePoint_Profile {
                 return self::result( false, [ __( 'This profile form does not accept file uploads.', 'ishi-latepoint-profile' ) ] );
             }
             if ( ! hash_equals( self::revision( $context ), $data['ishi_lp_revision'] ?? '' ) ) {
-                return self::result( false, [ __( 'Your account changed after this form was opened. Review the current values and try again.', 'ishi-latepoint-profile' ) ] );
+                return self::result( false, [ __( 'Your account changed after this form was opened. Review the current values and try again.', 'ishi-latepoint-profile' ) ] ) + [ 'stale' => true ];
             }
             $customer = $context['customer'];
             $user = $context['user'];
@@ -381,58 +388,57 @@ final class Ishi_LatePoint_Profile {
         return true;
     }
 
-    public static function handle_post() {
-        self::no_cache();
-        if ( ( $_SERVER['REQUEST_METHOD'] ?? '' ) !== 'POST' ) {
-            wp_die( esc_html__( 'Please submit the profile form.', 'ishi-latepoint-profile' ), '', [ 'response' => 405 ] );
-        }
-        if ( ! is_user_logged_in() ) {
-            wp_die( esc_html__( 'Your sign-in session has expired. Sign in and try again.', 'ishi-latepoint-profile' ), '', [ 'response' => 403 ] );
-        }
-        $post = wp_unslash( $_POST );
-        $result = self::save_submission( $post );
-        $token = wp_generate_uuid4();
-        if ( ! set_transient( self::notice_key( $token ), $result, 5 * MINUTE_IN_SECONDS ) ) {
-            // Do not silently lose the outcome if the flash store is unavailable.
-            wp_die( self::notice_html( $result ), '', [ 'response' => $result['success'] ? 200 : 400, 'back_link' => true ] );
-        }
-        $destination = self::return_url( isset( $post['ishi_lp_return'] ) && is_string( $post['ishi_lp_return'] ) ? $post['ishi_lp_return'] : '' );
-        wp_safe_redirect( add_query_arg( 'ishi_lp_notice', $token, $destination ), 303 );
-        exit;
+    public static function endpoint() {
+        return rest_url( Ishi_Shortcode_UI::REST_NAMESPACE . '/profile' );
     }
 
-    public static function return_url( $candidate = '' ) {
-        if ( $candidate === '' ) {
-            $candidate = wp_get_referer() ?: home_url( '/' );
-            if ( ! is_admin() && isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] ) ) {
-                $origin = wp_parse_url( home_url() );
-                $candidate = $origin['scheme'] . '://' . $origin['host'] . ( isset( $origin['port'] ) ? ':' . $origin['port'] : '' ) . wp_unslash( $_SERVER['REQUEST_URI'] );
+    public static function register_routes() {
+        register_rest_route( Ishi_Shortcode_UI::REST_NAMESPACE, '/profile', [
+            [ 'methods' => 'GET', 'callback' => [ __CLASS__, 'rest_read' ], 'permission_callback' => [ 'Ishi_Shortcode_UI', 'permission' ] ],
+            [ 'methods' => 'POST', 'callback' => [ __CLASS__, 'rest_save' ], 'permission_callback' => [ 'Ishi_Shortcode_UI', 'permission' ] ],
+        ] );
+    }
+
+    public static function rest_read( $request ) {
+        $permission = Ishi_Shortcode_UI::permission( $request );
+        if ( $permission !== true ) { return $permission; }
+        self::$response = null;
+        self::$values = [];
+        return Ishi_Shortcode_UI::response( 'profile', self::render(), null, 'profile' );
+    }
+
+    public static function rest_save( $request ) {
+        $permission = Ishi_Shortcode_UI::permission( $request );
+        if ( $permission !== true ) { return $permission; }
+        $body = $request->get_body_params(); // REST parameters are already unslashed.
+        $previous_post = $_POST;
+        $previous_files = $_FILES;
+        self::$values = [];
+        add_action( 'set_logged_in_cookie', [ 'Ishi_Shortcode_UI', 'renewed_cookie' ], 10, 6 );
+        try {
+            // Native LatePoint/Pro hooks can inspect request globals.
+            $_POST = wp_slash( $body );
+            $_FILES = $request->get_file_params();
+            self::$response = self::save_submission( $body );
+            if ( ! self::$response['success'] && empty( self::$response['partial'] ) && empty( self::$response['stale'] ) ) {
+                foreach ( array_merge( array_keys( self::FIELD_MAP ), [ 'account_display_name' ] ) as $name ) {
+                    if ( isset( $body[ $name ] ) && is_string( $body[ $name ] ) && strlen( $body[ $name ] ) <= 4096 ) {
+                        self::$values[ $name ] = sanitize_text_field( $body[ $name ] );
+                    }
+                }
             }
+            return Ishi_Shortcode_UI::response( 'profile', self::render(), self::$response['success'], 'profile' );
+        } finally {
+            remove_action( 'set_logged_in_cookie', [ 'Ishi_Shortcode_UI', 'renewed_cookie' ], 10 );
+            $_POST = $previous_post;
+            $_FILES = $previous_files;
         }
-        $candidate = wp_validate_redirect( $candidate, home_url( '/' ) );
-        // Stay on this exact site's origin even if another plugin allows external redirect hosts.
-        $home = wp_parse_url( home_url( '/' ) );
-        $url = wp_parse_url( $candidate );
-        if ( ! is_array( $url ) || ( $url['host'] ?? '' ) !== ( $home['host'] ?? '' ) ||
-            ( $url['scheme'] ?? '' ) !== ( $home['scheme'] ?? '' ) || ( $url['port'] ?? null ) !== ( $home['port'] ?? null ) ) {
-            $candidate = home_url( '/' );
-        }
-        return remove_query_arg( [ 'ishi_lp_notice' ], $candidate );
     }
 
-    private static function notice_key( $token ) {
-        return 'ishi_lp_' . get_current_user_id() . '_' . substr( wp_hash( wp_get_session_token() ), 0, 16 ) . '_' . $token;
-    }
-
-    private static function consume_notice() {
-        $token = isset( $_GET['ishi_lp_notice'] ) && is_string( $_GET['ishi_lp_notice'] ) ? wp_unslash( $_GET['ishi_lp_notice'] ) : '';
-        if ( ! preg_match( '/^[a-f0-9-]{36}$/D', $token ) ) {
-            return null;
-        }
-        $key = self::notice_key( $token );
-        $notice = get_transient( $key );
-        delete_transient( $key );
-        return is_array( $notice ) ? $notice : null;
+    public static function handle_post() {
+        // Old cached forms must not write or navigate. Only the authenticated REST route saves.
+        self::no_cache();
+        wp_die( esc_html__( 'This profile form is outdated. Refresh it before saving. No changes were saved.', 'ishi-latepoint-profile' ), '', [ 'response' => 409 ] );
     }
 
     public static function notice_html( $notice ) {

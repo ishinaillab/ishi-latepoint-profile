@@ -1,4 +1,12 @@
-# Ishi LatePoint Profile 1.3.13
+# Ishi LatePoint Profile 1.4.0
+
+## 1.4.0 — Shared shortcode runtime
+
+Both existing shortcodes now use one in-place frontend runtime and shared REST/security/theme infrastructure. Profile saves in the background too, with no notice-token redirect. Its LatePoint validation, WordPress display name, native password behavior and persistence checks remain intact. Addresses keeps its working edit/save/card flow.
+
+Future plugin shortcodes must use the same registry, wrappers, data attributes and response contract documented in [docs/shared-shortcode-ui.md](docs/shared-shortcode-ui.md). Common functionality includes duplicate-request prevention, error feedback, safe input retention, nonce refresh after session renewal, Qwery-before-WooCommerce enhancement, and light-scheme opened dropdowns. No Saving label or select visibility override is introduced.
+
+Profile routes: GET/POST /ishi-profile/v1/profile. REST requests use login cookies and a REST nonce, plus the existing customer-bound form nonce and signed revision for writes. Old admin-post Profile submissions are rejected without saving. Replace the complete plugin folder and clear cached plugin assets.
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 

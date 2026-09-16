@@ -20,7 +20,7 @@ function get_current_user_id() { return $GLOBALS['uid']; }
 function wp_get_current_user() { return (object) [ 'user_email' => 'login@example.test' ]; }
 function wp_hash( $s ) { return hash_hmac( 'sha256', $s, 'test-secret' ); }
 function wp_json_encode( $s ) { return json_encode( $s ); }
-function wp_create_nonce( $a ) { return wp_hash( $a . ':' . get_current_user_id() ); }
+function wp_create_nonce( $a ) { return wp_hash( $a . ':' . get_current_user_id() . ( defined( 'LOGGED_IN_COOKIE' ) ? ( $_COOKIE[ LOGGED_IN_COOKIE ] ?? '' ) : '' ) ); }
 function wp_verify_nonce( $n, $a ) { return hash_equals( wp_create_nonce( $a ), $n ); }
 function wp_nonce_field( $a, $name, $ref = true ) { echo '<input name="' . esc_attr( $name ) . '" value="' . esc_attr( wp_create_nonce( $a ) ) . '">'; }
 function wp_unslash( $s ) { return is_array( $s ) ? array_map( 'wp_unslash', $s ) : stripslashes( $s ); }
@@ -58,7 +58,8 @@ function wp_slash( $v ) { return is_array( $v ) ? array_map( 'wp_slash', $v ) : 
 function register_rest_route( $ns, $route, $args ) { $GLOBALS['routes'][ $route ] = $args; }
 class WP_Error {
     public $code, $message, $data;
-    public function __construct( $code, $message, $data ) { $this->code = $code; $this->message = $message; $this->data = $data; }
+    public function __construct( $code, $message, $data = [] ) { $this->code = $code; $this->message = $message; $this->data = $data; }
+    public function get_error_messages() { return [ $this->message ]; }
 }
 class WP_REST_Response {
     public $data, $status, $headers = [];
@@ -209,7 +210,7 @@ function rejected( $result ) { expect( ! $result['success'] && $GLOBALS['writes'
 function test( $label, $callback ) { fixture(); $callback(); echo 'PASS ' . $label . PHP_EOL; }
 
 test( 'default shows both address cards and standalone links', function () {
-    $html = Ishi_WooCommerce_Addresses::render(); expect( substr_count( $html, 'woocommerce-Address-title' ) === 2 && strpos( $html, 'data-ishi-address-edit' ) !== false && strpos( $html, 'href=' ) === false && strpos( $html, '<form' ) === false, 'Incorrect default display.' );
+    $html = Ishi_WooCommerce_Addresses::render(); expect( substr_count( $html, 'woocommerce-Address-title' ) === 2 && strpos( $html, 'data-ishi-ui-edit' ) !== false && strpos( $html, 'href=' ) === false && strpos( $html, '<form' ) === false, 'Incorrect default display.' );
 } );
 test( 'billing edit renders current customer fields', function () { select_view( 'billing' ); $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="billing_city" value="Makati"' ) !== false && strpos( $html, 'name="shipping_city"' ) === false, 'Wrong edit mode.' ); } );
 test( 'shipping edit renders shipping fields', function () { select_view( 'shipping' ); $html = Ishi_WooCommerce_Addresses::render(); expect( strpos( $html, 'name="shipping_country"' ) !== false && strpos( $html, 'name="billing_country"' ) === false, 'Wrong shipping fields.' ); } );
@@ -248,7 +249,7 @@ test( 'ordinary POST is rejected before saving and never redirects', function ()
 } );
 test( 'editor cannot submit natively before background script is ready', function () {
     select_view( 'billing' ); $html = Ishi_WooCommerce_Addresses::render();
-    expect( strpos( $html, 'type="button" data-ishi-address-save' ) !== false && strpos( $html, 'data-ishi-address-ready disabled' ) !== false && strpos( $html, 'onsubmit="return false;"' ) !== false, 'Editor can submit natively.' );
+    expect( strpos( $html, 'type="button" data-ishi-ui-save' ) !== false && strpos( $html, 'data-ishi-ui-ready disabled' ) !== false && strpos( $html, 'onsubmit="return false;"' ) !== false, 'Editor can submit natively.' );
 } );
 test( 'save handler runs before native form handlers and frontend routing', function () {
     $found = false;

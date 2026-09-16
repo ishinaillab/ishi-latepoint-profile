@@ -5,7 +5,7 @@
 }
 
 /* Edit actions retain button semantics while matching Qwery's native Edit links. */
-.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit] {
+.ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit] {
     background: none;
     border: 0;
     border-radius: 0;
@@ -21,27 +21,27 @@
     text-transform: none;
     cursor: pointer;
 }
-.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:hover {
+.ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit]:hover {
     background: none;
     color: var(--theme-color-text_hover, inherit);
 }
-.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:focus-visible {
+.ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit]:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 3px;
 }
 @media (max-width: 767px) {
-    .ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit] {
+    .ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit] {
         font-size: 15px;
     }
 }
 
 /* Qwery's disabled-button colors use !important. Preserve the Edit-link
    appearance while the control remains disabled against duplicate requests. */
-.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:disabled {
+.ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit]:disabled {
     color: var(--theme-color-text_link, inherit) !important;
     background-color: transparent !important;
     border-color: transparent !important;
 }
-.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:disabled:hover {
+.ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit]:disabled:hover {
     color: var(--theme-color-text_hover, inherit) !important;
 }

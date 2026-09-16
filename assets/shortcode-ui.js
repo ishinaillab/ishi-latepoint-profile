@@ -1,16 +1,17 @@
 (function () {
     'use strict';
     if (!window.fetch || !window.FormData || !window.DOMParser) return;
-    const selector = '.ishi-customer-addresses';
+    const selector = '[data-ishi-ui]';
     const busy = new WeakSet();
+    let fragmentId = 0;
 
-    function enable(root) {
-        if (busy.has(root)) return;
-        root.querySelectorAll('[data-ishi-address-control]').forEach(node => { node.disabled = false; });
-        root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
-        root.querySelectorAll('[data-ishi-address-unavailable]').forEach(node => { node.hidden = true; });
+    function enable(root, force = false) {
+        if (busy.has(root) && !force) return;
+        root.querySelectorAll('[data-ishi-ui-control]').forEach(node => { node.disabled = false; });
+        root.querySelectorAll('[data-ishi-ui-ready]').forEach(node => { node.disabled = false; });
+        root.querySelectorAll('[data-ishi-ui-unavailable]').forEach(node => { node.hidden = true; });
     }
-    function initialize() { document.querySelectorAll(selector).forEach(enable); }
+    function initialize() { if (window.document) document.querySelectorAll(selector).forEach(root => enable(root)); }
     document.addEventListener('DOMContentLoaded', initialize);
     new MutationObserver(initialize).observe(document.documentElement, { childList: true, subtree: true });
     initialize();
@@ -33,7 +34,7 @@
         controls.forEach(node => {
             // Keep Save's native theme appearance. The busy guard blocks both
             // pointer and keyboard resubmissions; ARIA communicates unavailability.
-            if (node.matches('[data-ishi-address-save]')) node.setAttribute('aria-disabled', 'true');
+            if (node.matches('[data-ishi-ui-save]')) node.setAttribute('aria-disabled', 'true');
             else node.disabled = true;
         });
         try {
@@ -44,25 +45,40 @@
             });
             if ((!response.ok && response.status !== 422) || new URL(response.url).href !== url.href) throw new Error('Unexpected response');
             const result = await response.json();
-            if (result.ishi_addresses !== true || typeof result.html !== 'string') throw new Error('Invalid response');
+            if (result.ishi_ui !== true || result.component !== root.getAttribute('data-ishi-ui') || typeof result.html !== 'string' || (form && typeof result.saved !== 'boolean')) throw new Error('Invalid response');
             const doc = new DOMParser().parseFromString(result.html, 'text/html');
             const matches = doc.querySelectorAll(selector);
-            if (matches.length !== 1) throw new Error('Address interface missing');
+            if (matches.length !== 1 || matches[0].getAttribute('data-ishi-ui') !== result.component) throw new Error('Interface missing');
             const next = matches[0];
-            const editor = next.querySelector('form[data-ishi-address-form]');
-            const cards = next.querySelector('.woocommerce-Addresses');
+            const editor = next.querySelector('form[data-ishi-ui-form]');
+            const cards = next.querySelector('[data-ishi-ui-view]');
             if (!editor && !cards) throw new Error('Address view missing');
             // A POST may show cards only after our server's explicit persistence confirmation.
-            if (form && cards && result.saved !== true) {
+            if (form && !editor && result.saved !== true) {
                 throw new Error('Save confirmation missing');
             }
             // Do not execute scripts from the fetched full page or replace any parent widgets.
             next.querySelectorAll('script').forEach(node => node.remove());
-            root.setAttribute('data-ishi-rest-nonce', next.getAttribute('data-ishi-rest-nonce') || root.getAttribute('data-ishi-rest-nonce'));
+            const nonce = result.rest_nonce || next.getAttribute('data-ishi-rest-nonce');
+            if (nonce) document.querySelectorAll(selector).forEach(node => node.setAttribute('data-ishi-rest-nonce', nonce));
+            // Prevent duplicate label/input IDs when several instances are present.
+            const prefix = 'ishi-fragment-' + (++fragmentId) + '-';
+            const ids = new Map();
+            next.querySelectorAll('[id]').forEach(node => {
+                // WooCommerce's locale scripts require these native address IDs.
+                if (result.component === 'addresses') return;
+                ids.set(node.id, prefix + node.id);
+                node.id = ids.get(node.id);
+            });
+            next.querySelectorAll('[for], [aria-describedby], [aria-labelledby]').forEach(node => {
+                ['for', 'aria-describedby', 'aria-labelledby'].forEach(attribute => {
+                    if (node.hasAttribute(attribute)) node.setAttribute(attribute, node.getAttribute(attribute).split(/\s+/).map(id => ids.get(id) || id).join(' '));
+                });
+            });
             root.replaceChildren(...Array.from(next.childNodes));
             // Enable the new editor before WooCommerce enhances its selects.
             // enable() is intentionally blocked while this request is busy.
-            root.querySelectorAll('[data-ishi-address-ready]').forEach(node => { node.disabled = false; });
+            enable(root, true);
             if (editor && window.jQuery && window.QWERY_STORAGE) {
                 try {
                     // Qwery's normal fragment initializer decorates raw selects,
@@ -70,7 +86,7 @@
                     // Pass only this shortcode: never reinitialize the parent panel.
                     window.jQuery(document).trigger('action.init_hidden_elements', [window.jQuery(root)]);
                 } catch (error) {
-                    console.warn('Ishi address theme initialization unavailable.', error);
+                    console.warn('Ishi shortcode theme initialization unavailable.', error);
                 }
             }
             if (window.jQuery) {
@@ -84,8 +100,9 @@
                     console.warn('Ishi address select enhancement unavailable.', error);
                 }
             }
-            root.dispatchEvent(new CustomEvent('ishi:addresses-updated', { bubbles: true }));
-            const focus = root.querySelector('[role="alert"], [role="status"], h2');
+            root.dispatchEvent(new CustomEvent('ishi:ui-updated', { bubbles: true, detail: { component: result.component, saved: result.saved, view: result.view } }));
+            if (result.component === 'addresses') root.dispatchEvent(new CustomEvent('ishi:addresses-updated', { bubbles: true }));
+            const focus = root.querySelector('[role="alert"]:not([hidden]), [role="status"]:not([hidden]), h2');
             if (focus) { focus.setAttribute('tabindex', '-1'); focus.focus({ preventScroll: true }); }
         } catch (error) {
             const notice = document.createElement('div');
@@ -93,14 +110,16 @@
             notice.dataset.ishiNavigationError = 'true';
             notice.setAttribute('role', 'alert');
             notice.textContent = form
-                ? 'The response could not be loaded. Your address may have been saved. Your entries are still here; reload to check the stored address before submitting again.'
-                : 'The address form could not be loaded. Please try again.';
+                ? 'The response could not be loaded. Some changes may have been saved. Your non-password entries are still here; check the stored values before submitting again.'
+                : 'The form could not be loaded. Please try again.';
             root.prepend(notice);
             // Never automatically resubmit a POST or navigate the whole page after an uncertain save.
         } finally {
+            // Never retain passwords following a completed or uncertain request.
+            if (form) form.querySelectorAll('input[type="password"]').forEach(node => { node.value = ''; });
             controls.forEach((node, index) => {
                 node.disabled = disabled[index];
-                if (node.matches('[data-ishi-address-save]')) {
+                if (node.matches('[data-ishi-ui-save]')) {
                     if (ariaDisabled[index] === null) node.removeAttribute('aria-disabled');
                     else node.setAttribute('aria-disabled', ariaDisabled[index]);
                 }
@@ -115,27 +134,27 @@
         const root = control.closest(selector);
         if (!root) return;
         try {
-            const url = new URL(control.getAttribute('data-ishi-address-url') || (form && form.getAttribute('data-ishi-address-url')), document.baseURI);
+            const url = new URL(control.getAttribute('data-ishi-ui-url') || (form && form.getAttribute('data-ishi-ui-url')), document.baseURI);
             if (!sameOrigin(url)) throw new Error('Invalid endpoint');
             navigate(root, url, form, form ? control : undefined);
         } catch (error) {
             const notice = document.createElement('div');
             notice.className = 'woocommerce-error';
             notice.setAttribute('role', 'alert');
-            notice.textContent = 'Address editing is unavailable. Please contact support.';
+            notice.textContent = 'Editing is unavailable. Please contact support.';
             root.prepend(notice);
         }
     }
     window.addEventListener('click', function (event) {
-        const button = event.target.closest('[data-ishi-address-save], [data-ishi-address-edit]');
-        if (!button) return;
+        const button = event.target.closest('[data-ishi-ui-save], [data-ishi-ui-edit]');
+        if (!button || !button.closest(selector)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        requestFrom(button, button.hasAttribute('data-ishi-address-save') ? button.closest('form[data-ishi-address-form]') : null);
+        requestFrom(button, button.hasAttribute('data-ishi-ui-save') ? button.closest('form[data-ishi-ui-form]') : null);
     }, true);
     window.addEventListener('submit', function (event) {
         const form = event.target;
-        if (!form.matches('form[data-ishi-address-form]')) return;
+        if (!form.matches('form[data-ishi-ui-form]') || !form.closest(selector)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         requestFrom(form, form);
