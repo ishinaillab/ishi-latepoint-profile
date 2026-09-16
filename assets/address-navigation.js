@@ -64,7 +64,7 @@
                     window.jQuery(root).find('#billing_country, #shipping_country').trigger('refresh');
                 } catch (error) {
                     // Presentation enhancement must not turn a confirmed save into
-                    // a save error. Scoped CSS keeps native selects usable.
+                    // a save error. Select visibility remains controlled by the theme.
                     console.warn('Ishi address select enhancement unavailable.', error);
                 }
             }

@@ -29,7 +29,7 @@ final class Ishi_Theme_Compatibility {
         foreach ( [ 'qwery-woocommerce', 'qwery-woocommerce-responsive' ] as $handle ) {
             if ( wp_style_is( $handle, 'registered' ) ) { $dependencies[] = $handle; }
         }
-        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, '1.3.2' );
+        wp_enqueue_style( 'ishi-theme-compatibility', plugins_url( 'assets/theme-compatibility.css', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), $dependencies, '1.3.3' );
     }
 
     public static function render_styles() {

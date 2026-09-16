@@ -31,7 +31,8 @@ const fs = require('node:fs');
             for (const [cls, value] of [['country_select', 'PH'], ['state_select', '00']]) {
                 const select = page.locator('select.' + cls);
                 assert.equal(await select.inputValue(), value);
-                assert.equal(await select.evaluate(el => getComputedStyle(el).visibility), 'visible');
+                // Without theme/SelectWoo initialization, the theme's hiding rule must win.
+                assert.equal(await select.evaluate(el => getComputedStyle(el).visibility), 'hidden');
             }
             assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
             await page.getByRole('button', { name: 'Save changes' }).click();
