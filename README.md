@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.8
+# Ishi LatePoint Profile 1.3.9
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -74,3 +74,7 @@ Keep address-card Edit controls link-styled during loading. Narrowly scoped disa
 ## 1.3.8
 
 Save changes uses aria-disabled while saving rather than the native disabled attribute, preserving normal theme styling. The existing busy guard rejects duplicate pointer/keyboard submissions, fields remain locked, and the previous ARIA state is restored on errors. No Save-button CSS overrides are added.
+
+## 1.3.9
+
+Display a translated Saving… status beside the address Save changes button while its request runs. Clear it when the request settles; successful saves still show updated cards and failures retain their normal feedback. No CSS or button-label changes; duplicate-submission protection remains intact.

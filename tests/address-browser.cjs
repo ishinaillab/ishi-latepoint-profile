@@ -7,7 +7,7 @@ const fs = require('node:fs');
         const page = await browser.newPage();
         const wrap = inner => '<div class="woocommerce woocommerce-page woocommerce-account ishi-theme-account ishi-customer-addresses" data-ishi-rest-nonce="rest-nonce"><div class="woocommerce-MyAccount-content">' + inner + '</div></div>';
         const cards = wrap('<div class="woocommerce-Addresses">Updated address' + ['billing','shipping'].map(type => '<button disabled type="button" data-ishi-address-control data-ishi-address-edit data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '">Edit ' + type + '</button>').join('') + '</div>');
-        const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><div class="woocommerce-address-fields"><select class="country_select" name="country"><option selected value="PH">Philippines</option></select><select class="state_select" name="state"><option selected value="00">Metro Manila</option></select></div><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button></fieldset></form>');
+        const editor = type => wrap('<form data-ishi-address-form data-ishi-address-url="/wp-json/ishi-profile/v1/addresses/' + type + '" onsubmit="return false;"><fieldset data-ishi-address-ready disabled><div class="woocommerce-address-fields"><select class="country_select" name="country"><option selected value="PH">Philippines</option></select><select class="state_select" name="state"><option selected value="00">Metro Manila</option></select></div><input name="action" value="ishi_save_customer_address" type="hidden"><input name="' + type + '_city" value="Makati"><button type="button" data-ishi-address-save name="ishi_save_address" value="' + type + '">Save changes</button><span data-ishi-save-status role="status" data-ishi-saving-text="Saving…"></span></fieldset></form>');
         let documents = 0, posts = 0;
         await page.route('https://example.test/**', async route => {
             const req = route.request();
@@ -36,11 +36,13 @@ const fs = require('node:fs');
             }
             assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
             await page.getByRole('button', { name: 'Save changes' }).click();
+            assert.equal(await page.locator('[data-ishi-save-status]').textContent(), 'Saving…');
             const save = page.locator('[data-ishi-address-save]');
             assert.equal(await save.getAttribute('aria-disabled'), 'true');
             assert.equal(await save.evaluate(el => el.disabled), false);
             await save.evaluate(el => { el.click(); el.closest('form').dispatchEvent(new Event('submit', {bubbles:true,cancelable:true})); });
             await page.locator('.woocommerce-Addresses').waitFor();
+            assert.equal(await page.locator('[data-ishi-save-status]').count(), 0);
             assert.equal(page.url(), 'https://example.test/dashboard/#third');
             assert.equal(await page.locator('details').evaluate(node => node.open), true);
         }

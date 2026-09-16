@@ -36,6 +36,8 @@
             if (node.matches('[data-ishi-address-save]')) node.setAttribute('aria-disabled', 'true');
             else node.disabled = true;
         });
+        const saveStatus = form ? form.querySelector('[data-ishi-save-status]') : null;
+        if (saveStatus) saveStatus.textContent = saveStatus.getAttribute('data-ishi-saving-text') || 'Saving…';
         try {
             const response = await fetch(url.href, {
                 method: form ? 'POST' : 'GET', body,
@@ -98,6 +100,7 @@
             root.prepend(notice);
             // Never automatically resubmit a POST or navigate the whole page after an uncertain save.
         } finally {
+            if (saveStatus) saveStatus.textContent = '';
             controls.forEach((node, index) => {
                 node.disabled = disabled[index];
                 if (node.matches('[data-ishi-address-save]')) {

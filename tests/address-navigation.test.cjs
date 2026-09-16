@@ -110,3 +110,24 @@ test('Edit is a disabled non-navigating button without initialization', () => {
     assert.equal(edit.tagName, 'BUTTON'); assert.equal(edit.disabled, true);
     assert.equal(edit.getAttribute('href'), null); dom.window.close();
 });
+
+test('saving status clears after a failed request and allows retry', async () => {
+    const w = setup(editor);
+    const status = w.document.createElement('span');
+    status.setAttribute('data-ishi-save-status', '');
+    status.setAttribute('data-ishi-saving-text', 'Saving…');
+    w.document.querySelector('form').append(status);
+    let fail;
+    w.fetch = () => new Promise((resolve, reject) => { fail = reject; });
+    submit(w);
+    assert.equal(status.textContent, 'Saving…');
+    fail(new Error('Network failed'));
+    await tick();
+    assert.equal(status.textContent, '');
+    assert.equal(w.document.querySelector('[data-ishi-address-save]').hasAttribute('aria-disabled'), false);
+    assert.ok(w.document.querySelector('[role="alert"]'));
+    w.fetch = async () => response(cards, true);
+    submit(w); await tick();
+    assert.ok(w.document.querySelector('.woocommerce-Addresses'));
+    w.close();
+});

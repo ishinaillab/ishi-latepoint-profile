@@ -20,6 +20,7 @@ do_action( 'woocommerce_before_edit_account_address_form' );
         <?php do_action( "woocommerce_after_edit_address_form_{$load_address}" ); ?>
         <p>
             <button type="button" data-ishi-address-save class="button<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" name="ishi_save_address" value="<?php echo esc_attr( $load_address ); ?>"><?php esc_html_e( 'Save changes', 'ishi-latepoint-profile' ); ?></button>
+            <span data-ishi-save-status role="status" aria-live="polite" aria-atomic="true" data-ishi-saving-text="<?php echo esc_attr( __( 'Saving…', 'ishi-latepoint-profile' ) ); ?>"></span>
             <?php wp_nonce_field( Ishi_WooCommerce_Addresses::ACTION . '_' . $load_address, 'ishi_address_nonce', false ); ?>
             <input type="hidden" name="action" value="<?php echo esc_attr( Ishi_WooCommerce_Addresses::ACTION ); ?>" />
             <input type="hidden" name="ishi_address_type" value="<?php echo esc_attr( $load_address ); ?>" />
