@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.6
+# Ishi LatePoint Profile 1.3.7
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -66,3 +66,7 @@ After inserting an address editor and refreshing WooCommerce country/state contr
 ## 1.3.6
 
 Adapt only the address-card Edit buttons to Qwery's Edit-link appearance using its configured font and color variables and corresponding responsive typography. Save buttons, select visibility, fieldsets, Qwery initialization, and the REST interaction are unchanged. No clearing pseudo-element or select visibility override is restored.
+
+## 1.3.7
+
+Keep address-card Edit controls link-styled during loading. Narrowly scoped disabled color rules override Qwery's important disabled-button background/text colors; actual disabled behavior and keyboard focus styling remain unchanged. Save buttons are unaffected.

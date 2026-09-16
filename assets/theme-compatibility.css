@@ -34,3 +34,14 @@
         font-size: 15px;
     }
 }
+
+/* Qwery's disabled-button colors use !important. Preserve the Edit-link
+   appearance while the control remains disabled against duplicate requests. */
+.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:disabled {
+    color: var(--theme-color-text_link, inherit) !important;
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+.ishi-customer-addresses .woocommerce-Address-title button.edit[data-ishi-address-edit]:disabled:hover {
+    color: var(--theme-color-text_hover, inherit) !important;
+}
