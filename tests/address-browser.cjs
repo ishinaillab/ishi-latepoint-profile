@@ -15,7 +15,7 @@ const fs = require('node:fs');
                 assert.equal(req.headers()['x-wp-nonce'], 'rest-nonce');
                 const type = req.url().endsWith('shipping') ? 'shipping' : 'billing';
                 const saved = req.method() === 'POST';
-                if (saved) { posts++; assert.match(req.postData(), /ishi_save_customer_address/); }
+                if (saved) { await new Promise(resolve => setTimeout(resolve, 250)); posts++; assert.match(req.postData(), /ishi_save_customer_address/); }
                 return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ishi_addresses: true, saved: saved ? true : null, html: saved ? cards : editor(type) }) });
             }
             documents++;
@@ -36,6 +36,10 @@ const fs = require('node:fs');
             }
             assert.equal(await page.evaluate(() => document.querySelector('form').action instanceof HTMLInputElement), true);
             await page.getByRole('button', { name: 'Save changes' }).click();
+            const save = page.locator('[data-ishi-address-save]');
+            assert.equal(await save.getAttribute('aria-disabled'), 'true');
+            assert.equal(await save.evaluate(el => el.disabled), false);
+            await save.evaluate(el => { el.click(); el.closest('form').dispatchEvent(new Event('submit', {bubbles:true,cancelable:true})); });
             await page.locator('.woocommerce-Addresses').waitFor();
             assert.equal(page.url(), 'https://example.test/dashboard/#third');
             assert.equal(await page.locator('details').evaluate(node => node.open), true);

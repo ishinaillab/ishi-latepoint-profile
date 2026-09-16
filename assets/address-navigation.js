@@ -26,10 +26,16 @@
         root.querySelectorAll('[data-ishi-navigation-error]').forEach(node => node.remove());
         const controls = Array.from(root.querySelectorAll('button, input, select, textarea'));
         const disabled = controls.map(node => node.disabled);
+        const ariaDisabled = controls.map(node => node.getAttribute('aria-disabled'));
         // Serialize before disabling controls, including the clicked submit button.
         const body = form ? new FormData(form) : undefined;
         if (body && submitter && submitter.name) body.append(submitter.name, submitter.value);
-        controls.forEach(node => { node.disabled = true; });
+        controls.forEach(node => {
+            // Keep Save's native theme appearance. The busy guard blocks both
+            // pointer and keyboard resubmissions; ARIA communicates unavailability.
+            if (node.matches('[data-ishi-address-save]')) node.setAttribute('aria-disabled', 'true');
+            else node.disabled = true;
+        });
         try {
             const response = await fetch(url.href, {
                 method: form ? 'POST' : 'GET', body,
@@ -92,7 +98,13 @@
             root.prepend(notice);
             // Never automatically resubmit a POST or navigate the whole page after an uncertain save.
         } finally {
-            controls.forEach((node, index) => { node.disabled = disabled[index]; });
+            controls.forEach((node, index) => {
+                node.disabled = disabled[index];
+                if (node.matches('[data-ishi-address-save]')) {
+                    if (ariaDisabled[index] === null) node.removeAttribute('aria-disabled');
+                    else node.setAttribute('aria-disabled', ariaDisabled[index]);
+                }
+            });
             root.removeAttribute('aria-busy');
             busy.delete(root);
             enable(root);

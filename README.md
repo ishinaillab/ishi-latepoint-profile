@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.7
+# Ishi LatePoint Profile 1.3.8
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -70,3 +70,7 @@ Adapt only the address-card Edit buttons to Qwery's Edit-link appearance using i
 ## 1.3.7
 
 Keep address-card Edit controls link-styled during loading. Narrowly scoped disabled color rules override Qwery's important disabled-button background/text colors; actual disabled behavior and keyboard focus styling remain unchanged. Save buttons are unaffected.
+
+## 1.3.8
+
+Save changes uses aria-disabled while saving rather than the native disabled attribute, preserving normal theme styling. The existing busy guard rejects duplicate pointer/keyboard submissions, fields remain locked, and the previous ARIA state is restored on errors. No Save-button CSS overrides are added.
