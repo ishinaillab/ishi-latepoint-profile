@@ -1,4 +1,4 @@
-# Ishi LatePoint Profile 1.3.11
+# Ishi LatePoint Profile 1.3.12
 
 The existing `[ishi_latepoint_profile]` remains available. The new `[ishi_customer_addresses]` shortcode provides a standalone WooCommerce billing/shipping address book. Place it once on any normal WordPress page or server-rendered shortcode location. Customers must sign in; WooCommerce must be active. No LatePoint customer record is required for addresses.
 
@@ -82,3 +82,7 @@ Completely remove the Saving status introduced in 1.3.9 and restore the prior ad
 ## 1.3.11
 
 Run Qwery's scoped fragment initialization before WooCommerce refresh enhances the new selects. This allows Qwery's select_container wrapper to supply the arrow that its CSS removes from SelectWoo. No CSS overrides are introduced. Verified with the available Qwery/WooCommerce source in a browser reproduction; exact authenticated live dropdown style parity remains unverified.
+
+## 1.3.12
+
+With Qwery active, enqueue WooCommerce's registered select2 base stylesheet at wp_enqueue_scripts priority 20, after WooCommerce registration (10) and before Qwery skin styles (1000+). This intentionally loads that one base stylesheet on Qwery frontend pages even when no shortcode is detectable, covering builders that render the shortcode only after wp_head. WordPress's existing handle prevents repeated printing during shortcode rendering. No global SelectWoo JavaScript, copied theme CSS, new color declarations, or changes to address processing are introduced. Cache/optimization layers must preserve stylesheet order; live authenticated parity still requires site verification.

@@ -3,6 +3,16 @@
 defined( 'ABSPATH' ) || exit;
 
 final class Ishi_Theme_Compatibility {
+    public static function enqueue_select_base_early() {
+        // WC registers select2 at priority 10; Qwery's skin CSS loads at 1000+.
+        // Builder content may not be discoverable until after wp_head, so do
+        // not depend on post_content to put this base stylesheet before Qwery.
+        // Reuse WC's handle: no duplicate URL, copied CSS, or extra JavaScript.
+        if ( function_exists( 'qwery_enqueue_styles' ) && wp_style_is( 'select2', 'registered' ) ) {
+            wp_enqueue_style( 'select2' );
+        }
+    }
+
     public static function enqueue_if_present() {
         $post = get_post();
         if ( $post && ( has_shortcode( $post->post_content, 'ishi_customer_addresses' ) || has_shortcode( $post->post_content, 'ishi_latepoint_profile' ) ) ) {
@@ -41,4 +51,5 @@ final class Ishi_Theme_Compatibility {
         wp_print_styles( [ 'ishi-theme-compatibility' ] );
     }
 }
+add_action( 'wp_enqueue_scripts', [ 'Ishi_Theme_Compatibility', 'enqueue_select_base_early' ], 20 );
 add_action( 'wp_enqueue_scripts', [ 'Ishi_Theme_Compatibility', 'enqueue_if_present' ], 2100 );
