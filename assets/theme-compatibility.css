@@ -45,3 +45,54 @@
 .ishi-theme-account.woocommerce-account button.edit[data-ishi-ui-edit]:disabled:hover {
     color: var(--theme-color-text_hover, inherit) !important;
 }
+
+/* Shared card layout: natural wrapping, aligned rows, container-based stacking.
+   Qwery still owns typography, colors and margins. Legacy browsers get one column. */
+.ishi-theme-account.woocommerce-account .woocommerce-MyAccount-content .ishi-ui-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 4%;
+}
+.ishi-theme-account.woocommerce-account .woocommerce-MyAccount-content .ishi-ui-card-grid > .ishi-ui-card {
+    float: none;
+    width: auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+/* Float-clearing pseudo-elements must not become extra grid items. */
+.ishi-theme-account .ishi-ui-card-grid::before,
+.ishi-theme-account .ishi-ui-card-grid::after,
+.ishi-theme-account .ishi-ui-card-header::before,
+.ishi-theme-account .ishi-ui-card-header::after {
+    display: none;
+}
+@supports (grid-template-rows: subgrid) {
+    .ishi-theme-account.woocommerce-account .woocommerce-MyAccount-content .ishi-ui-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 18em), 1fr));
+    }
+    .ishi-theme-account .ishi-ui-card-grid > .ishi-ui-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-row: span 3;
+        grid-template-rows: subgrid;
+        row-gap: 0;
+    }
+    .ishi-theme-account .ishi-ui-card > .ishi-ui-card-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-row: 1 / span 2;
+        grid-template-rows: subgrid;
+        row-gap: 0;
+        min-width: 0;
+    }
+    .ishi-theme-account .ishi-ui-card-header > h2,
+    .ishi-theme-account .ishi-ui-card-header > .edit {
+        float: none;
+        justify-self: start;
+        align-self: start;
+        max-width: 100%;
+    }
+    .ishi-theme-account .ishi-ui-card-header > h2 { grid-row: 1; }
+    .ishi-theme-account .ishi-ui-card-header > .edit { grid-row: 2; }
+    .ishi-theme-account .ishi-ui-card > .ishi-ui-card-body { grid-row: 3; }
+}

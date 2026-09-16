@@ -3,7 +3,7 @@
 defined( 'ABSPATH' ) || exit;
 
 final class Ishi_Shortcode_UI {
-    const VERSION = '1.4.0';
+    const VERSION = '1.4.1';
     const REST_NAMESPACE = 'ishi-profile/v1';
     private static $shortcodes = [];
 

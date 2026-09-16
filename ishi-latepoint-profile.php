@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ishi LatePoint Profile
  * Description: Independent customer profile shortcode with shared, in-place account interfaces.
- * Version: 1.4.0
+ * Version: 1.4.1
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: ishi-latepoint-profile
