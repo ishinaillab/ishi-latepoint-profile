@@ -3,6 +3,13 @@
 defined( 'ABSPATH' ) || exit;
 
 final class Ishi_Theme_Compatibility {
+    public static function enqueue_dropdown_scheme() {
+        if ( function_exists( 'qwery_enqueue_styles' ) ) {
+            // Delegated events also cover builder content and later REST fragments.
+            wp_enqueue_script( 'ishi-dropdown-scheme', plugins_url( 'assets/dropdown-scheme.js', dirname( __DIR__ ) . '/ishi-latepoint-profile.php' ), [ 'jquery' ], '1.3.13', true );
+        }
+    }
+
     public static function enqueue_select_base_early() {
         // WC registers select2 at priority 10; Qwery's skin CSS loads at 1000+.
         // Builder content may not be discoverable until after wp_head, so do
@@ -51,5 +58,6 @@ final class Ishi_Theme_Compatibility {
         wp_print_styles( [ 'ishi-theme-compatibility' ] );
     }
 }
+add_action( 'wp_enqueue_scripts', [ 'Ishi_Theme_Compatibility', 'enqueue_dropdown_scheme' ], 20 );
 add_action( 'wp_enqueue_scripts', [ 'Ishi_Theme_Compatibility', 'enqueue_select_base_early' ], 20 );
 add_action( 'wp_enqueue_scripts', [ 'Ishi_Theme_Compatibility', 'enqueue_if_present' ], 2100 );

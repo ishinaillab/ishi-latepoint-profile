@@ -16,9 +16,9 @@ jobs:
 
       - name: Test in-place address navigation
         run: |
-          npm install --no-save --package-lock=false --ignore-scripts jsdom@26.1.0
+          npm install --no-save --package-lock=false --ignore-scripts jsdom@26.1.0 jquery@3.7.1
           node --check assets/address-navigation.js
-          node --test tests/address-navigation.test.cjs
+          node --test tests/address-navigation.test.cjs tests/dropdown-scheme.test.cjs
 
       - name: Test address form in Chromium
         run: |
